@@ -6,6 +6,15 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-09-03
+
+### Fixed
+
+- Static test for the cover headline (the sample sidecar now carries a
+  written `headline`; the generated fallback is unit-tested instead).
+  0.7.0 was tagged with this one test red — CI on that tag is expected to
+  fail; nothing in the shipped skills changed.
+
 ## [0.7.0] — 2026-09-03
 
 ### Changed
