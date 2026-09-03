@@ -182,8 +182,11 @@ roadmap (Week 1 / Weeks 2–3 / Month 2 cards + a dark Ongoing card: Decide /
 Prove / Watch / Re-audit), 06 owner calls and strengths, 07 not assessed,
 08 no effect on Google Search (optional, listed last), 09 how to read the
 scores (band cards), 10 glossary (Full mode). Instrument Sans + JetBrains
-Mono load from Google Fonts when online and fall back to system fonts
-offline — the only external request. Single light theme on purpose (white page, dark hero) so it reads the same in a dark viewer. Inline CSS
+Mono are embedded from `assets/fonts.css` (variable fonts, latin +
+latin-ext, SIL Open Font License) so the report renders identically
+offline, in the Claude Artifact viewer and in print — no external
+request at all. Single light theme on purpose (the design's `#F5F4FB`
+page, white cards, dark hero) so it reads the same in a dark viewer. Inline CSS
 only, light / dark tokens, a "Save as PDF" button (`window.print()` only —
 no download link, no PDF library; the Claude Artifact viewer blocks
 page-initiated downloads and may restrict print, hence the ⌘P / Ctrl+P

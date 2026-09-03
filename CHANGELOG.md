@@ -6,6 +6,23 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-04
+
+### Changed
+
+- **Report matches the design export exactly**: every font size, weight,
+  letter-spacing, padding, gap, radius and colour was measured from the
+  owner's mock element by element (44 px headline, Instrument Sans
+  labels, JetBrains Mono chips and evidence, accent top borders on the
+  fix-first / quick-win and finding cards, the design's `#F5F4FB` page with
+  white cards, dark hero, band cards, glossary grid).
+- **Fonts embedded**: `skills/seo-audit/assets/fonts.css` carries
+  Instrument Sans and JetBrains Mono (variable woff2, latin + latin-ext,
+  SIL Open Font License notice included) so the report renders identically
+  offline, in the Claude Artifact viewer and in print. The report makes no
+  external request; the Google Fonts link remains only as a fallback when
+  the asset file is missing.
+
 ## [0.7.2] — 2026-09-03
 
 ### Changed
