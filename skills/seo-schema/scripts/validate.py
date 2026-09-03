@@ -9,8 +9,9 @@ For each input: extract JSON-LD (raw JSON, or every
 <script type="application/ld+json"> in HTML), parse it, walk the graph,
 and check the rolepod minimum properties per type (the Required column of
 references/schema-minimums.md — kept in lockstep by make test-static).
-Exit 1 when any block fails to parse or any typed node misses a required
-property. Prints one line per node.
+Exit 1 when any block fails to parse, carries placeholder text, or any
+typed node misses a required property. Warns (exit 0) on types whose
+Google rich result was retired. Prints one line per node.
 """
 from __future__ import annotations
 
@@ -39,6 +40,25 @@ REQUIRED: dict[str, list] = {
     "Review": ["itemReviewed", "author", "reviewRating"],
     "AggregateRating": ["ratingValue", ("reviewCount", "ratingCount")],
 }
+# type -> (date Google retired the rich result, Google-owned source). The schema.org
+# type stays valid; validate.py WARNS, never fails, on these. Lockstep with
+# references/schema-minimums.md "Retired rich results" (tests/static/schema-minimums.sh).
+RETIRED: dict[str, tuple[str, str]] = {
+    "HowTo": ("2023-09-13", "https://developers.google.com/search/blog/2023/08/howto-faq-changes"),
+    "FAQPage": ("2026-05-07", "https://developers.google.com/search/docs/appearance/structured-data/faqpage"),
+    "ClaimReview": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+    "CourseInfo": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+    "EstimatedSalary": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+    "LearningVideo": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+    "SpecialAnnouncement": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+    "VehicleListing": ("2025-06-12", "https://developers.google.com/search/blog/2025/06/simplifying-search-results"),
+}
+# Placeholder text that must never ship inside JSON-LD (FAIL).
+PLACEHOLDER_RE = re.compile(
+    r"\[(?:business name|company name|city|state|phone|address|your[^\]]*|insert[^\]]*|url|email|name|date)\]"
+    r"|\bREPLACE(?:_[A-Z]+)*\b|\bTODO\b|\bTBD\b|lorem ipsum|example\.com/your-",
+    re.I,
+)
 ALIASES = {
     "BlogPosting": "Article", "NewsArticle": "Article", "TechArticle": "Article",
     "Plumber": "LocalBusiness", "Dentist": "LocalBusiness", "Restaurant": "LocalBusiness",
@@ -132,6 +152,22 @@ def walk(data):
             stack.extend(x)
 
 
+def placeholders_in(data) -> list[str]:
+    hits: list[str] = []
+    stack = [data]
+    while stack:
+        x = stack.pop()
+        if isinstance(x, dict):
+            stack.extend(x.values())
+        elif isinstance(x, list):
+            stack.extend(x)
+        elif isinstance(x, str):
+            m = PLACEHOLDER_RE.search(x)
+            if m:
+                hits.append(m.group(0))
+    return hits
+
+
 def check_block(raw: str, where: str) -> tuple[int, int]:
     ok = fail = 0
     try:
@@ -139,6 +175,10 @@ def check_block(raw: str, where: str) -> tuple[int, int]:
     except json.JSONDecodeError as e:
         print(f"FAIL {where}: JSON-LD does not parse — {e.msg} at line {e.lineno} col {e.colno}")
         return 0, 1
+    ph = placeholders_in(data)
+    if ph:
+        fail += 1
+        print(f"FAIL {where}: placeholder text in markup — {', '.join(sorted(set(ph))[:5])}")
     ctx = data.get("@context") if isinstance(data, dict) else None
     if isinstance(data, dict) and ctx is not None and "schema.org" not in json.dumps(ctx):
         print(f"WARN {where}: @context is {ctx!r}, expected schema.org")
@@ -147,6 +187,9 @@ def check_block(raw: str, where: str) -> tuple[int, int]:
         t = node.get("@type")
         types = t if isinstance(t, list) else ([t] if t else [])
         for ty in types:
+            if str(ty) in RETIRED:
+                date, src = RETIRED[str(ty)]
+                print(f"WARN {where}: {ty} — no Google rich result since {date}; keep only if it mirrors the page and another consumer needs it ({src})")
             key = ALIASES.get(str(ty), str(ty))
             if key not in REQUIRED:
                 continue

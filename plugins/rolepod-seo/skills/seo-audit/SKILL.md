@@ -82,9 +82,10 @@ python3 <skill-dir>/scripts/collect.py https://example.com --mode quick   # or -
 ```
 
 It fetches the homepage, robots.txt, sitemap(s), llms.txt and the selected
-pages, then writes `pages.md` (one row per page), `site.json` (robots
-verdict per bot, sitemap facts, duplicate titles / descriptions, redirect
-chains, host variants) and `collect.json` under
+pages, then writes `pages.md` (one row per page, with inbound links and
+click depth), `site.json` (robots verdict per bot, sitemap facts, duplicate
+titles / descriptions, near-duplicate pages, redirect chains, host
+variants, link graph, detected site type) and `collect.json` under
 `.rolepod-seo/collect-<host>-<date>/` (add `.rolepod-seo/` to the project's
 `.gitignore`). Read `pages.md` and `site.json`. Open raw HTML only when a
 finding needs a quote the table cannot give — then fetch that one page.
@@ -99,7 +100,9 @@ and fill the same columns by hand: status, final URL, title, description,
 H1 count, canonical, robots, word count, schema types, author, FAQ.
 
 Failures are findings, not excuses: a page that returns 4xx / 5xx or times
-out appears in the report as "could not fetch <url> (<status>)".
+out appears in the report as "could not fetch <url> (<status>)". The
+collector refuses private, loopback and cloud-metadata targets; pass
+`--allow-private` only for a site you run locally.
 
 ### 4. Collect — Tier B (when rolepod-uiproof is installed)
 
@@ -107,6 +110,9 @@ out appears in the report as "could not fetch <url> (<status>)".
   canonical / JSON-LD validity / OG / hreflang. Diff against Tier A — a
   value that exists only after JavaScript runs is itself a GEO finding.
 - Full mode: `measure_cwv` on the homepage and two money pages.
+- `audit_a11y` on the homepage and one booking / checkout / contact page:
+  names, labels and tree integrity are the agent-actionability signal
+  (Lighthouse Agentic Browsing checks the same things).
 - `discover_flows` only when Tier A found no internal links on the
   homepage (JavaScript-only navigation).
 
@@ -148,9 +154,16 @@ Write the JSON sidecar first (it drives everything else), then the
 markdown report, both from `references/report.md`. Render the HTML:
 
 ```bash
-python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --collect <collect.json>
+python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --collect <collect.json> [--previous reports/seo-audit-<host>-<older-date>.json]
 python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --artifact   # Claude Code only
 ```
+
+Pass `--previous` whenever an older sidecar for the same host exists in
+`reports/`: the report gains a "Since last audit" section (score deltas,
+fixed / new / still-open findings by `id`) and the chat summary gets the
+same line. The HTML also derives a phased roadmap (week 1 / weeks 2–3 /
+month 2 / ongoing) and a quick-wins block from the priorities — no extra
+input needed.
 
 On Claude Code publish the `--artifact` file with the Artifact tool
 (`<title>` is the host; no external assets; light / dark tokens are built

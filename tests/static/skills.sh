@@ -25,6 +25,15 @@ for dir in skills/*/; do
   for p in $(grep -oE '\bseo-[a-z-]+/(references|examples|templates|scripts)/[A-Za-z0-9_.-]+' "$f" | sort -u); do
     [ -e "skills/$p" ] || echo "  ! $name: cross-skill pointer $p not shipped yet"
   done
+  # reference graph: every skill-relative mention in ANY file of the skill resolves; every supporting file is mentioned somewhere
+  for md in $(find "$dir" -name '*.md' ! -name SKILL.md); do
+    for p in $(grep -oE '(^|[^A-Za-z0-9/-])(references|examples|templates|scripts)/[A-Za-z0-9_.-]+' "$md" | sed -E 's/^[^a-z]*//' | sort -u); do
+      [ -e "$dir/$p" ] || { echo "  ✗ $name: $(basename "$md") points at $p which does not exist"; fail=1; }
+    done
+  done
+  for sf in $(find "$dir" -type f ! -name SKILL.md ! -name .DS_Store ! -name '*.pyc' | sed "s#^$dir/##"); do
+    grep -rqF --include='*.md' --include='*.py' --exclude="$(basename "$sf")" -- "$sf" "$dir" || { echo "  ✗ $name: $sf is never mentioned by SKILL.md or another supporting file (orphan)"; fail=1; }
+  done
   if grep -rEiq '(effort|reasoning)[^a-z\n]{0,12}\b(max|ultra)\b' "$dir"; then
     echo "  ✗ $name: effort max/ultra (ceiling is xhigh)"; fail=1
   fi
@@ -42,5 +51,5 @@ while IFS= read -r phrase; do
     echo "  ✗ banned phrase present: \"$phrase\""; fail=1; banned=$((banned+1))
   fi
 done < tests/static/banned-phrases.txt
-[ $fail -eq 0 ] && echo "  ✓ $n skill(s): frontmatter, ≤240 lines, ≤5 supporting files + ≤3 scripts, pointers resolve, effort ≤ xhigh, clean-room guard"
+[ $fail -eq 0 ] && echo "  ✓ $n skill(s): frontmatter, ≤240 lines, ≤5 supporting files + ≤3 scripts, reference graph resolves with no orphans, effort ≤ xhigh, clean-room guard"
 exit $fail

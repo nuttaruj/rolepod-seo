@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "SEO + GEO + AEO site audit skills for AI coding agents.",
-    "version": "0.3.1"
+    "version": "0.4.0"
   },
   "plugins": [
     {
       "name": "rolepod-seo",
       "source": ".",
       "description": "/seo-audit (Quick/Full site audit across SEO, GEO and AEO with 1–10 scores and quoted evidence), /seo-fix-plan (hand-offs per owner), /seo-schema (JSON-LD + validation), /seo-page-brief (content brief). Skills only.",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "nuttaruj"
       },

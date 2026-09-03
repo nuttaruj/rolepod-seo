@@ -17,11 +17,19 @@ Outputs (in --out, default .rolepod-seo/collect-<host>-<YYYYMMDD>/):
 
 No JavaScript is executed. Rendered-DOM checks (JS-injected meta, JSON-LD
 added at runtime, Core Web Vitals) belong to rolepod-uiproof.
+
+Safety: private, loopback, link-local and cloud-metadata targets are refused
+(also as redirect targets) unless --allow-private is given for a site you run
+locally. DNS is resolved once per fetch; rebinding between resolve and connect
+is not defended at this layer. Sitemap XML is size-capped and rejected when it
+carries a DOCTYPE.
 """
 from __future__ import annotations
 
 import argparse
 from collections import deque
+import ipaddress
+import socket
 import datetime as dt
 import json
 import os
@@ -37,6 +45,47 @@ from html.parser import HTMLParser
 VERSION = 1
 UA = "Mozilla/5.0 (compatible; rolepod-seo/0.1; +https://github.com/nuttaruj/rolepod-seo)"
 BOTS = ["Googlebot", "Bingbot", "GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended", "CCBot"]
+SITEMAP_MAX_BYTES = 20 * 1024 * 1024
+SITEMAP_MAX_URLS = 50_000
+BLOCKED_HOSTS = {"localhost", "metadata.google.internal", "metadata", "instance-data", "169.254.169.254", "fd00:ec2::254"}
+_ALLOW_PRIVATE = False
+
+
+def is_safe_ip(ip_str: str) -> bool:
+    """Public unicast only: rejects private, loopback, link-local, reserved, multicast, unspecified (IPv4-mapped IPv6 included)."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
+
+
+def unsafe_reason(url: str) -> str | None:
+    """Why this URL must not be fetched, or None. Hostname blocklist, IP-literal check, then every resolved address."""
+    if _ALLOW_PRIVATE:
+        return None
+    p = urllib.parse.urlsplit(url)
+    if p.scheme.lower() not in ("http", "https"):
+        return f"scheme {p.scheme!r} not allowed"
+    host = (p.hostname or "").lower().rstrip(".")
+    if not host:
+        return "no hostname"
+    if host in BLOCKED_HOSTS or host.endswith((".localhost", ".internal", ".local")):
+        return f"blocked hostname {host}"
+    try:
+        ipaddress.ip_address(host)
+        return None if is_safe_ip(host) else f"private or reserved address {host}"
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return f"{host} does not resolve"
+    for info in infos:
+        ip = info[4][0]
+        if not is_safe_ip(ip):
+            return f"{host} resolves to private address {ip}"
+    return None
 
 SKIP_RE = re.compile(
     r"(/wp-admin|/wp-login|/login|/signin|/sign-in|/register|/cart|/checkout|/account|/my-account"
@@ -127,6 +176,9 @@ def ssl_context() -> ssl.SSLContext:
     return ctx
 
 
+KEEP_HEADERS = {"strict-transport-security", "content-security-policy", "x-content-type-options", "x-robots-tag", "cache-control", "server"}
+
+
 class _Redirects(urllib.request.HTTPRedirectHandler):
     def __init__(self):
         super().__init__()
@@ -134,6 +186,9 @@ class _Redirects(urllib.request.HTTPRedirectHandler):
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         self.hops.append((code, newurl))
+        why = unsafe_reason(newurl)
+        if why:
+            raise urllib.error.URLError(f"refused redirect: {why}")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -147,18 +202,25 @@ def fetch(url: str, timeout: float, limit: int = 2_000_000) -> dict:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
     )
-    out = {"url": url, "status": 0, "final_url": url, "hops": [], "content_type": "", "x_robots": "", "body": b"", "error": ""}
+    out = {"url": url, "status": 0, "final_url": url, "hops": [], "content_type": "", "x_robots": "", "headers": {}, "body": b"", "error": ""}
+    why = unsafe_reason(url)
+    if why:
+        out["error"] = f"refused: {why}"
+        return out
     try:
         with opener.open(req, timeout=timeout) as r:
             out["status"] = r.status
             out["final_url"] = r.geturl()
             out["content_type"] = r.headers.get("Content-Type", "") or ""
             out["x_robots"] = r.headers.get("X-Robots-Tag", "") or ""
+            out["headers"] = {k.lower(): v for k, v in r.headers.items() if k.lower() in KEEP_HEADERS}
             out["body"] = r.read(limit)
     except urllib.error.HTTPError as e:
         out["status"] = e.code
         out["final_url"] = e.geturl() if hasattr(e, "geturl") else url
         out["content_type"] = (e.headers.get("Content-Type", "") if e.headers else "") or ""
+        if e.headers:
+            out["headers"] = {k.lower(): v for k, v in e.headers.items() if k.lower() in KEEP_HEADERS}
         try:
             out["body"] = e.read(500_000)
         except Exception:
@@ -170,8 +232,19 @@ def fetch(url: str, timeout: float, limit: int = 2_000_000) -> dict:
 
 
 def decode(body: bytes, content_type: str) -> str:
-    m = re.search(r"charset=([\w-]+)", content_type or "", re.I)
-    for enc in ([m.group(1)] if m else []) + ["utf-8", "cp1252", "latin-1"]:
+    """BOM → Content-Type charset → <meta charset> in the first 4 KB → utf-8 / cp1252 / latin-1."""
+    if body.startswith(b"\xef\xbb\xbf"):
+        return body[3:].decode("utf-8", "replace")
+    if body.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return body.decode("utf-16", "replace")
+    encs: list[str] = []
+    m = re.search(r"charset=\"?([\w-]+)", content_type or "", re.I)
+    if m:
+        encs.append(m.group(1))
+    m2 = re.search(rb"<meta[^>]+charset=[\"']?\s*([\w-]+)", body[:4096], re.I)
+    if m2:
+        encs.append(m2.group(1).decode("ascii", "ignore"))
+    for enc in encs + ["utf-8", "cp1252", "latin-1"]:
         try:
             return body.decode(enc)
         except Exception:
@@ -362,6 +435,7 @@ def page_facts(url: str, res: dict) -> dict:
         "redirect_chain": [f"{c} → {u}" for c, u in res["hops"]],
         "content_type": res["content_type"].split(";")[0].strip(),
         "error": res["error"],
+        "_headers": res.get("headers", {}),
     }
     if res["error"] or res["status"] >= 400 or not res["body"] or "html" not in res["content_type"].lower():
         return row
@@ -442,6 +516,7 @@ def page_facts(url: str, res: dict) -> dict:
             "tables": p.tables,
             "lists": p.lists,
             "_internal_links": p.internal,
+            "_text": " ".join(p.text).lower(),
         }
     )
     return row
@@ -510,9 +585,18 @@ def read_sitemaps(urls: list[str], timeout: float, log) -> dict:
         if u in seen:
             continue
         seen.add(u)
-        res = fetch(u, timeout)
+        res = fetch(u, timeout, limit=SITEMAP_MAX_BYTES)
         info["checked"].append({"url": u, "status": res["status"], "error": res["error"]})
         if res["status"] != 200 or not res["body"]:
+            continue
+        if len(res["body"]) >= SITEMAP_MAX_BYTES:
+            info["errors"].append(f"{u}: larger than {SITEMAP_MAX_BYTES // (1024 * 1024)} MiB, skipped")
+            continue
+        if b"<!doctype" in res["body"][:4096].lower():
+            info["errors"].append(f"{u}: DOCTYPE is not allowed in sitemap XML, skipped")
+            continue
+        if len(info["entries"]) >= SITEMAP_MAX_URLS:
+            info["errors"].append(f"{u}: URL cap {SITEMAP_MAX_URLS} reached, skipped")
             continue
         try:
             root = ET.fromstring(res["body"])
@@ -584,11 +668,112 @@ def page_role(url: str, base: str) -> str:
     return "other"
 
 
+# ---------------------------------------------------------------- cross-page analysis
+def link_graph(rows: list[dict], base: str) -> dict:
+    """Inbound links and click depth among the fetched pages only."""
+    keys = {norm(r["url"]): r for r in rows}
+    out_edges: dict[str, set[str]] = {k: set() for k in keys}
+    for k, r in keys.items():
+        for l in r.get("_internal_links", []):
+            t = norm(urllib.parse.urlsplit(l)._replace(fragment="").geturl())
+            if t in keys and t != k:
+                out_edges[k].add(t)
+    inlinks: dict[str, set[str]] = {k: set() for k in keys}
+    for src, targets in out_edges.items():
+        for t in targets:
+            inlinks[t].add(src)
+    home = norm(base)
+    depth: dict[str, int | None] = {k: None for k in keys}
+    if home in keys:
+        depth[home] = 0
+        q = deque([home])
+        while q:
+            cur = q.popleft()
+            for t in out_edges[cur]:
+                if depth[t] is None:
+                    depth[t] = depth[cur] + 1
+                    q.append(t)
+    for k, r in keys.items():
+        r["inlinks"] = len(inlinks[k])
+        r["depth"] = depth[k]
+    return {
+        "pages_in_graph": len(keys),
+        "unreachable_from_home": [path_of(r["url"]) for k, r in keys.items() if depth[k] is None and k != home and r["status"] == 200],
+        "low_inlinks": [path_of(r["url"]) for k, r in keys.items() if r["status"] == 200 and k != home and len(inlinks[k]) <= 1 and r.get("role") in ("money", "answer", "trust")],
+    }
+
+
+def near_duplicates(rows: list[dict], threshold: float = 0.7, k: int = 8) -> list[dict]:
+    """Pairs of fetched pages whose word-shingle sets overlap ≥ threshold (Jaccard)."""
+    sets = []
+    for r in rows:
+        words = r.get("_text", "").split()
+        if len(words) < 100:
+            continue
+        sh = {hash(" ".join(words[i:i + k])) for i in range(len(words) - k + 1)}
+        sets.append((r, sh))
+    pairs = []
+    for i in range(len(sets)):
+        for j in range(i + 1, len(sets)):
+            a, sa = sets[i]
+            b, sb = sets[j]
+            inter = len(sa & sb)
+            if not inter:
+                continue
+            sim = inter / len(sa | sb)
+            if sim >= threshold:
+                pairs.append({"a": path_of(a["url"]), "b": path_of(b["url"]), "similarity": round(sim, 2)})
+    return sorted(pairs, key=lambda x: -x["similarity"])[:50]
+
+
+SITE_TYPE_RULES = {
+    "saas": {"paths": r"/pricing|/plans|/features|/integrations|/docs|/api\b|/sign-?up|/free-trial|/changelog", "text": ("free trial", "sign up", "start free", "per month", "per seat", "integrations")},
+    "ecommerce": {"paths": r"/products?/|/collections?/|/cart|/checkout|/shop\b|/category/", "text": ("add to cart", "add to basket", "free shipping", "in stock", "checkout")},
+    "local": {"paths": r"/contact|/locations?|/areas?-we-serve|/service-area|/book", "text": ("serving ", "service area", "areas we cover", "near you", "opening hours", "call us", "visit us")},
+    "publisher": {"paths": r"/blog|/news|/articles?/|/topics?/|/authors?/|/magazine|/stories", "text": ("read more", "latest articles", "by ", "published", "editor")},
+    "agency": {"paths": r"/case-stud|/portfolio|/our-work|/clients|/industries|/services", "text": ("case study", "our clients", "our work", "we help", "get a proposal", "book a call")},
+}
+
+
+def site_type(rows: list[dict], home_text: str) -> dict:
+    """Weighted signals: distinct path sections (1 each, max 3), homepage phrases (1 each), schema (2), home NAP (3), authors (1)."""
+    signals: dict[str, list[str]] = {t: [] for t in SITE_TYPE_RULES}
+    points: dict[str, int] = {t: 0 for t in SITE_TYPE_RULES}
+    paths = [path_of(r["url"]) for r in rows]
+    for t, rule in SITE_TYPE_RULES.items():
+        sections = sorted({"/" + p.strip("/").split("/")[0] for p in paths if re.search(rule["paths"], p, re.I)})
+        if sections:
+            signals[t].append(f"paths: {', '.join(sections[:4])}")
+            points[t] += min(len(sections), 3)
+        found = [w for w in rule["text"] if w in home_text]
+        if found:
+            signals[t].append(f"text: {', '.join(w.strip() for w in found[:4])}")
+            points[t] += len(found)
+    types_seen = {t for r in rows for t in r.get("schema_types", [])}
+    if "Product" in types_seen:
+        signals["ecommerce"].append("schema: Product"); points["ecommerce"] += 2
+    if types_seen & {"LocalBusiness", "Plumber", "Dentist", "Restaurant", "Store", "ProfessionalService", "HomeAndConstructionBusiness"}:
+        signals["local"].append("schema: LocalBusiness"); points["local"] += 2
+    if types_seen & {"Article", "BlogPosting", "NewsArticle"}:
+        signals["publisher"].append("schema: Article"); points["publisher"] += 2
+    home = rows[0] if rows else {}
+    if {"address", "tel"} <= set(home.get("contact_signals", [])):
+        signals["local"].append("home: address + phone"); points["local"] += 3
+    if sum(1 for r in rows if r.get("author_present")) >= 2:
+        signals["publisher"].append("authors on ≥2 pages"); points["publisher"] += 1
+    ranked = sorted(points.items(), key=lambda kv: -kv[1])
+    (best, bp), (_, sp) = ranked[0], ranked[1]
+    if bp == 0:
+        return {"type": "unknown", "confidence": "none", "signals": {}}
+    conf = "high" if bp >= sp + 2 else "low"
+    return {"type": best, "confidence": conf, "points": points, "signals": {t: v for t, v in signals.items() if v}}
+
+
 # ---------------------------------------------------------------- output
 TSV_COLS = [
     "url", "role", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
     "canonical_ok", "robots_meta", "lang", "word_count", "schema_types", "author_present", "faq_visible",
-    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "error",
+    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "inlinks", "depth", "error",
 ]
 
 
@@ -604,6 +789,8 @@ def cell(row: dict, col: str) -> str:
         return "y" if v else "n"
     if isinstance(v, list):
         return ";".join(map(str, v))
+    if v is None:
+        return "-"
     return str(v).replace("\t", " ").replace("\n", " ")
 
 
@@ -614,7 +801,7 @@ def write_outputs(out: str, doc: dict):
         f.write("\t".join(TSV_COLS) + "\n")
         for r in rows:
             f.write("\t".join(cell(r, c) for c in TSV_COLS) + "\n")
-    md_cols = ["path", "status", "title", "desc", "h1", "canonical", "robots", "words", "schema", "author", "faq", "q-h2/3"]
+    md_cols = ["path", "status", "title", "desc", "h1", "canonical", "robots", "words", "schema", "author", "faq", "q-h2/3", "in/depth"]
     lines = ["| " + " | ".join(md_cols) + " |", "|" + "---|" * len(md_cols)]
     for r in rows:
         t = r.get("title", "")
@@ -634,11 +821,12 @@ def write_outputs(out: str, doc: dict):
                     cell(r, "author_present"),
                     (cell(r, "faq_visible") + "/" + cell(r, "faq_schema")) if "faq_visible" in r else "",
                     str(r.get("question_headings", "")),
+                    (f"{r.get('inlinks', 0)}/{'-' if r.get('depth') is None else r.get('depth')}") if r.get("status") == 200 else "",
                 ]
         lines.append("| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |")
     with open(os.path.join(out, "pages.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-        f.write("\nfaq = visible/schema · q-h2/3 = question-phrased H2/H3 · og = t/d/i for og:title / og:description / og:image present\n")
+        f.write("\nfaq = visible/schema · q-h2/3 = question-phrased H2/H3 · in/depth = inbound links from fetched pages / clicks from home (- = unreachable) · og = t/d/i for og:title / og:description / og:image present\n")
     with open(os.path.join(out, "site.json"), "w", encoding="utf-8") as f:
         json.dump(doc["site"], f, indent=2, ensure_ascii=False)
     with open(os.path.join(out, "collect.json"), "w", encoding="utf-8") as f:
@@ -657,9 +845,11 @@ def main(argv=None) -> int:
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--fixed-time", help="ISO timestamp to stamp instead of now (tests)")
     ap.add_argument("--insecure", action="store_true", help="skip TLS verification (recorded in site.json; last resort)")
+    ap.add_argument("--allow-private", action="store_true", help="allow private / loopback targets (a site you run locally)")
     a = ap.parse_args(argv)
-    global _INSECURE
+    global _INSECURE, _ALLOW_PRIVATE
     _INSECURE = a.insecure
+    _ALLOW_PRIVATE = a.allow_private
 
     base = a.base_url if re.match(r"^https?://", a.base_url, re.I) else "https://" + a.base_url
     if not urllib.parse.urlsplit(base).path:
@@ -676,6 +866,9 @@ def main(argv=None) -> int:
 
     # 1. home
     home = fetch(base, a.timeout)
+    if home["error"].startswith("refused:"):
+        print(f"{home['error']} — pass --allow-private only for a site you run locally", file=sys.stderr)
+        return 2
     home_row = page_facts(base, home)
     if home["error"] or home["status"] >= 400:
         log(f"home: {home['status']} {home['error']}")
@@ -792,8 +985,24 @@ def main(argv=None) -> int:
         "pages_fetched": sum(1 for r in rows if r["status"] == 200),
         "pages_selected": len(rows),
     }
+    graph = link_graph(rows, base)
+    dups = near_duplicates(rows)
+    stype = site_type(rows, home_row.get("_text", ""))
+    hh = home_row.get("_headers", {})
+    site["link_graph"] = graph
+    site["near_duplicates"] = dups
+    site["site_type"] = stype
+    site["security"] = {
+        "hsts": "strict-transport-security" in hh,
+        "hsts_value": hh.get("strict-transport-security", ""),
+        "csp": "content-security-policy" in hh,
+        "x_content_type_options": hh.get("x-content-type-options", ""),
+        "server": hh.get("server", ""),
+    }
     for r in rows:
         r.pop("_internal_links", None)
+        r.pop("_text", None)
+        r.pop("_headers", None)
     doc = {
         "tool": "rolepod-seo/collect",
         "version": VERSION,
@@ -804,6 +1013,7 @@ def main(argv=None) -> int:
         "site": site,
     }
     write_outputs(out, doc)
+    log(f"site type: {stype['type']} ({stype['confidence']}) · near-duplicates: {len(dups)} · unreachable from home: {len(graph['unreachable_from_home'])}")
     log(f"wrote {out}/pages.md, pages.tsv, site.json, collect.json — {site['pages_fetched']}/{site['pages_selected']} pages 200")
     print(out)
     return 0

@@ -5,7 +5,22 @@
   "site": {
     "base_url": "http://127.0.0.1:8765/",
     "host": "127.0.0.1:8765",
-    "mode": "full"
+    "mode": "full",
+    "site_type": {
+      "type": "local",
+      "confidence": "high",
+      "signals": {
+        "local": [
+          "home: address + phone",
+          "text: areas we cover",
+          "paths: /contact.html"
+        ],
+        "publisher": [
+          "paths: /blog/",
+          "authors on ≥2 pages"
+        ]
+      }
+    }
   },
   "summary": "The site has the basics right on the homepage and a strong FAQ page, but a cross-domain canonical on the main blog post, a noindex draft in the sitemap and no structured data on the FAQ and contact pages hold back both classic and AI search. Fix the canonical first, then add FAQPage and LocalBusiness schema; both are one-file changes. AI bots are blocked by policy — a decision for the owner, not a defect.",
   "collection": {
@@ -66,21 +81,39 @@
       "owner": "frontend-developer",
       "effort": "S",
       "impact": "H",
-      "priority": "critical"
+      "priority": "critical",
+      "verify": "collect.py --urls one.txt → canonical_ok = self",
+      "leading_indicator": "Search Console: /blog/post-1.html listed under Pages within 2 weeks"
     },
     {
       "id": "aeo-faq-schema-faq",
       "dimension": "aeo",
       "signal": "faq-schema",
       "page": "http://127.0.0.1:8765/faq.html",
-      "severity": "high",
+      "severity": "low",
       "status": "fail",
-      "evidence": "H2 \"How quickly can a plumber reach me in Leeds?\" + 5 more question headings; schema_types = []",
-      "fix": "Add FAQPage JSON-LD with the six visible Q/A pairs verbatim",
+      "evidence": "H2 \"How quickly can a plumber reach me in Leeds?\" + 5 more question headings with 40–60-word answers; schema_types = []",
+      "fix": "Optional: FAQPage JSON-LD mirroring the six visible Q/A pairs — a structural signal for answer engines only; Google shows no FAQ rich result since 2026-05-07",
       "owner": "frontend-developer",
       "effort": "S",
-      "impact": "H",
-      "priority": "quick-win"
+      "impact": "L",
+      "priority": "medium",
+      "verify": "validate.py https://…/faq.html → ok FAQPage (WARN retired is expected)"
+    },
+    {
+      "id": "seo-h1-multiple-services",
+      "dimension": "seo",
+      "signal": "h1",
+      "page": "http://127.0.0.1:8765/services.html",
+      "severity": "high",
+      "status": "fail",
+      "evidence": "2× <h1>: \"Plumbing and heating services in Leeds\", \"Book a service\"",
+      "fix": "change the second <h1>Book a service</h1> to <h2>",
+      "owner": "frontend-developer",
+      "effort": "S",
+      "impact": "M",
+      "priority": "quick-win",
+      "verify": "collect.py --urls one.txt → h1_count = 1"
     },
     {
       "id": "geo-ai-bot-policy-site",
@@ -130,6 +163,12 @@
     {
       "url": "http://127.0.0.1:8765/",
       "role": "home",
+      "status": 200,
+      "in_sitemap": true
+    },
+    {
+      "url": "http://127.0.0.1:8765/services.html",
+      "role": "money",
       "status": 200,
       "in_sitemap": true
     },

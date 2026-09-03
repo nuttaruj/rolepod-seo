@@ -19,14 +19,35 @@ keeps the two in lockstep.
 | `BreadcrumbList` | `itemListElement` | — | Each `ListItem` needs `position` and `name`; `item` (URL) on all but the last. Order = the visible trail. |
 | `Article` | `headline`, `datePublished`, `author.name`, `image` | `dateModified`, `publisher`, `description`, `author.url`, `mainEntityOfPage` | `BlogPosting` and `NewsArticle` share this row. `headline` ≤ 110 chars. `author` is a `Person` (or `Organization` when genuinely corporate). |
 | `Product` | `name`, `offers / review / aggregateRating` | `image`, `description`, `sku`, `brand`, `gtin` | `Offer` needs `price`, `priceCurrency`; add `availability`, `url`. Only real prices and real ratings. |
-| `FAQPage` | `mainEntity` | — | `mainEntity[]` of `Question` with `name` + `acceptedAnswer.text`, verbatim from the page. Rich-result display has been limited by Google to well-known government / health sites since 2023; the markup still gives answer engines a clean Q/A structure, which is why it stays in the AEO checks. |
-| `HowTo` | `name`, `step` | `totalTime`, `tool`, `supply`, `image` | `step[]` of `HowToStep` with `text`. Google retired the HowTo rich result in 2023; keep the markup only where the page is genuinely procedural. |
+| `FAQPage` | `mainEntity` | — | `mainEntity[]` of `Question` with `name` + `acceptedAnswer.text`, verbatim from the page. Google retired FAQ rich results for every site on 2026-05-07 (see the retired table below): the type stays valid, existing blocks may stay, never add one for a Google benefit, and use `QAPage` for genuine user-submitted Q&A. Kept in the AEO checks as a structural signal only. |
+| `HowTo` | `name`, `step` | `totalTime`, `tool`, `supply`, `image` | `step[]` of `HowToStep` with `text`. No Google rich result since 2023-09-13; keep the markup only where the page is genuinely procedural and another consumer wants it. |
 | `Person` | `name` | `url`, `jobTitle`, `sameAs`, `worksFor`, `image`, `description`, `knowsAbout` | Author entities. Link from `Article.author`; give each author a page that is the `url`. |
 | `Service` | `name`, `provider` | `serviceType`, `areaServed`, `description`, `offers`, `url` | No rich result; entity clarity for GEO. `provider` is the `Organization` / `LocalBusiness`. |
 | `Event` | `name`, `startDate`, `location` | `endDate`, `offers`, `image`, `description`, `organizer`, `eventStatus` | `location` is a `Place` with `name` + `address`, or a `VirtualLocation`. |
 | `VideoObject` | `name`, `thumbnailUrl`, `uploadDate` | `description`, `duration`, `contentUrl`, `embedUrl` | Needed for video rich results and key-moments. |
 | `Review` | `itemReviewed`, `author`, `reviewRating` | `datePublished`, `reviewBody` | `reviewRating.ratingValue` required. Reviews must be visible on the page. |
 | `AggregateRating` | `ratingValue`, `reviewCount / ratingCount` | `bestRating`, `worstRating` | Never self-serving: not on the site's own `Organization` / `LocalBusiness`. |
+
+## Retired rich results (the schema.org types stay valid)
+
+`scripts/validate.py` warns on these types with the date and source; the
+lockstep test keeps this table and the script's `RETIRED` dict identical.
+Every row must cite a Google-owned URL — third-party reports do not qualify.
+
+| Type | Rich result retired | Source | What to do |
+|---|---|---|---|
+| `HowTo` | 2023-09-13 | https://developers.google.com/search/blog/2023/08/howto-faq-changes | Keep only for genuinely procedural pages; never recommend for a Google benefit |
+| `FAQPage` | 2026-05-07 | https://developers.google.com/search/docs/appearance/structured-data/faqpage | Existing blocks may stay if they mirror the page; do not add for Google; `QAPage` for real user Q&A |
+| `ClaimReview` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | Fact-check rich results discontinued; keep only if a non-Google consumer needs it |
+| `CourseInfo` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | Use `Course` for entity clarity; no rich result |
+| `EstimatedSalary` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | Remove from job pages; `JobPosting` unaffected |
+| `LearningVideo` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | Plain `VideoObject` instead |
+| `SpecialAnnouncement` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | Remove; announce in visible content |
+| `VehicleListing` | 2025-06-12 | https://developers.google.com/search/blog/2025/06/simplifying-search-results | `Product` / `Car` for entity clarity; no rich result |
+
+Search Console reports, the Rich Results Test and the appearance filters for
+the June 2025 set were removed from 2025-09-09; FAQ reporting followed in
+June–August 2026.
 
 ## Cross-cutting rules
 

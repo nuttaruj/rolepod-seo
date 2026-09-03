@@ -3,6 +3,13 @@
 
 Usage:
   render_report.py <sidecar.json> [--out FILE] [--collect collect.json] [--artifact]
+                   [--previous older-sidecar.json]
+
+--previous adds a "Since last audit" section (score deltas, fixed / new /
+still-open findings matched by id) and prints the same one-liner to stderr
+for the chat summary. The roadmap (week 1 / weeks 2–3 / month 2 / ongoing),
+the quick-wins block, the per-page finding counts and the per-dimension
+status counts are all derived from the sidecar — no extra input.
 
 Default output: a complete HTML document (inline CSS, no external assets)
 next to the sidecar as seo-audit-<host>-<date>.html. A "Save as PDF"
@@ -30,6 +37,13 @@ from urllib.parse import urlsplit
 PRIORITY_ORDER = {"critical": 0, "high": 1, "quick-win": 2, "medium": 3}
 PRIORITY_LABEL = {"critical": "Critical", "high": "High", "quick-win": "Quick win", "medium": "Medium"}
 PRIORITY_DOT = {"critical": "🔴", "high": "🟠", "medium": "🟡", "quick-win": "🟢"}
+PHASES = [
+    ("Week 1 — unblock", "critical", "Crawl / indexation blockers and anything that hides money pages."),
+    ("Weeks 2–3 — high impact and quick wins", "high+quick-win", "Fixes with clear upside; the quick wins are one-file changes."),
+    ("Month 2 — content and trust", "medium", "Copy, briefs, E-E-A-T, schema breadth."),
+    ("Ongoing — decide, measure, re-audit", "ongoing", "Owner decisions, what needs a tool to prove, leading indicators."),
+]
+SITE_TYPE_LABEL = {"saas": "SaaS / software", "ecommerce": "e-commerce", "local": "local service", "publisher": "publisher / blog", "agency": "agency / services", "unknown": "not detected"}
 STATUS_LABEL = {"fail": "Fail", "warn": "Warn", "pass": "Pass", "not-assessed": "Not assessed"}
 DIM_NAME = {"seo": "SEO", "geo": "GEO", "aeo": "AEO"}
 DIM_SUB = {"seo": "classic search", "geo": "generative engines", "aeo": "answer engines"}
@@ -118,6 +132,17 @@ ul.plain{padding-left:20px}
 dl.gloss dt{font-weight:600;margin-top:8px}
 dl.gloss dd{margin:0 0 4px}
 .foot{margin-top:40px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.box h3{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.box ul{margin:0;padding-left:18px}
+.counts{font-size:12px;opacity:.85;margin-top:8px}
+.counts b{font-weight:600}
+.delta{font-size:13px;color:var(--muted)}
+.delta .up{color:var(--good);font-weight:600}.delta .down{color:var(--bad);font-weight:600}
+.phase{margin:14px 0 0}
+.phase h3{margin:0 0 4px}
+.phase p.muted{margin:0 0 6px;font-size:13px}
 .toolbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:12px 0 0;font-size:13px;color:var(--muted)}
 .print-btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}
 .print-btn:hover{border-color:var(--navy)}
@@ -140,7 +165,38 @@ dl.gloss dd{margin:0 0 4px}
 """
 
 
-def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
+def status_counts(findings: list[dict], dim: str) -> dict[str, int]:
+    c = {"fail": 0, "warn": 0, "pass": 0}
+    for f in findings:
+        if f.get("dimension") == dim and f.get("status") in c:
+            c[f["status"]] += 1
+    return c
+
+
+def open_ids(doc: dict) -> dict[str, dict]:
+    return {f["id"]: f for f in doc.get("findings", []) if f.get("status") in ("fail", "warn") and f.get("id")}
+
+
+def compare(doc: dict, prev: dict) -> dict:
+    cur, old = open_ids(doc), open_ids(prev)
+    return {
+        "previous_date": (prev.get("generated_at") or "")[:10],
+        "scores": {d: (prev.get("scores", {}).get(d, {}).get("score"), doc.get("scores", {}).get(d, {}).get("score")) for d in ("seo", "geo", "aeo")},
+        "fixed": [old[i] for i in old if i not in cur],
+        "new": [cur[i] for i in cur if i not in old],
+        "still": [cur[i] for i in cur if i in old],
+    }
+
+
+def compare_line(cmp: dict) -> str:
+    parts = []
+    for d, (a, b) in cmp["scores"].items():
+        if isinstance(a, int) and isinstance(b, int):
+            parts.append(f"{DIM_NAME[d]} {a}→{b}")
+    return f"since {cmp['previous_date']}: " + ", ".join(parts) + f" · fixed {len(cmp['fixed'])} · new {len(cmp['new'])} · still open {len(cmp['still'])}"
+
+
+def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> tuple[str, str]:
     """Return (title, body_html). body_html is the content inside .wrap."""
     site = doc.get("site", {})
     host = site.get("host", "site")
@@ -173,14 +229,22 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
             label, cls = "Not assessed", "na"
         score_txt = f"{score}<small>/10</small>" if isinstance(score, int) else "—"
         drivers = "".join(f"<li>{esc(x)}</li>" for x in s.get("drivers", [])[:3])
+        c = status_counts(findings, d)
         out.append(f'<div class="card {cls}"><div class="dim">{DIM_NAME[d]}</div><div class="sub">{DIM_SUB[d]}</div>'
                    f'<div class="score">{score_txt}</div><span class="status">{esc(label)}</span>'
                    f'<div class="sub">band: {esc(s.get("band", "—"))}</div>'
+                   f'<div class="counts"><b>{c["fail"]}</b> fail · <b>{c["warn"]}</b> warn · <b>{c["pass"]}</b> pass</div>'
                    + (f'<ul class="drivers">{drivers}</ul>' if drivers else "") + "</div>")
     out.append("</div></header>")
 
     # executive summary
     out.append('<section id="summary"><h2>Executive summary</h2>')
+    st = site.get("site_type") or {}
+    if isinstance(st, dict) and st.get("type"):
+        sig = "; ".join(v if isinstance(v, str) else ", ".join(v) for v in (st.get("signals", {}).get(st["type"], []) or [])[:3])
+        out.append(f'<p class="muted">Site type: <strong>{esc(SITE_TYPE_LABEL.get(st["type"], st["type"]))}</strong> ({esc(st.get("confidence", ""))} confidence' + (f" — {esc(sig)}" if sig else "") + ")</p>")
+    elif isinstance(st, str) and st:
+        out.append(f'<p class="muted">Site type: <strong>{esc(SITE_TYPE_LABEL.get(st, st))}</strong></p>')
     summary = doc.get("summary")
     if summary:
         out.append(f'<p class="lead">{esc(summary)}</p>')
@@ -194,21 +258,49 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
         top.sort(key=lambda f: (PRIORITY_ORDER.get(f.get("priority"), 9)))
         first = f" First fix: {top[0].get('fix')} ({path_of(top[0].get('page', ''))})." if top else ""
         out.append(f'<p class="lead">{esc(", ".join(parts))}.{esc(first)}</p>')
+    crit = [f for f in findings if f.get("priority") == "critical" and f.get("status") in ("fail", "warn")][:5]
+    quick = [f for f in findings if f.get("priority") == "quick-win" and f.get("status") in ("fail", "warn")][:5]
+    out.append('<div class="two">')
+    out.append('<div class="box"><h3>Fix first</h3>' + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> — {esc(f.get("fix"))}</li>' for f in crit) + '</ul>' if crit else '<p class="muted">No critical items.</p>') + '</div>')
+    out.append('<div class="box"><h3>Quick wins</h3>' + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> — {esc(f.get("fix"))}</li>' for f in quick) + '</ul>' if quick else '<p class="muted">No quick wins tagged.</p>') + '</div>')
+    out.append('</div>')
     out.append("</section>")
+
+    if prev:
+        cmp = compare(doc, prev)
+        out.append(f'<section id="since"><h2>Since last audit <span class="muted">— {esc(cmp["previous_date"])}</span></h2><p class="delta">')
+        bits = []
+        for d, (a, b) in cmp["scores"].items():
+            if isinstance(a, int) and isinstance(b, int):
+                cls_ = "up" if b > a else "down" if b < a else ""
+                bits.append(f'{DIM_NAME[d]} {a} → <span class="{cls_}">{b}</span>')
+        out.append(" · ".join(bits) + f' · fixed <strong>{len(cmp["fixed"])}</strong> · new <strong>{len(cmp["new"])}</strong> · still open <strong>{len(cmp["still"])}</strong></p>')
+        out.append('<div class="two">')
+        for label, items in (("Fixed", cmp["fixed"]), ("New", cmp["new"])):
+            out.append(f'<div class="box"><h3>{label}</h3>' + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span></li>' for f in items[:12]) + '</ul>' if items else '<p class="muted">none</p>') + '</div>')
+        out.append('</div></section>')
 
     # pages
     pages = doc.get("pages", [])
+    per_page: dict[str, dict[str, int]] = {}
+    for f in findings:
+        if f.get("status") in ("fail", "warn"):
+            per_page.setdefault(f.get("page", ""), {"fail": 0, "warn": 0})[f["status"]] += 1
     if pages:
-        out.append('<section id="pages"><h2>Pages audited</h2><div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>In sitemap</th>'
-                   + ("<th>Title</th><th>Words</th><th>Schema</th>" if facts else "") + "</tr></thead><tbody>")
+        out.append('<section id="pages"><h2>Pages audited</h2><div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>In sitemap</th><th>Findings</th>'
+                   + ("<th>Title</th><th>Words</th><th>Links in / depth</th><th>Schema</th>" if facts else "") + "</tr></thead><tbody>")
         for p in pages:
             f = facts.get(p.get("url"), {})
             st = p.get("status")
             st_cls = "pass" if st == 200 else "fail"
+            pc = per_page.get(p.get("url", ""), {})
+            cnt = (f'<span class="chip fail">{pc["fail"]} fail</span> ' if pc.get("fail") else "") + (f'<span class="chip warn">{pc["warn"]} warn</span>' if pc.get("warn") else "") or '<span class="muted">—</span>'
             row = (f'<tr><td class="mono">{esc(path_of(p.get("url", "")))}</td><td>{esc(p.get("role", ""))}</td>'
-                   f'<td><span class="chip {st_cls}">{esc(st)}</span></td><td>{"yes" if p.get("in_sitemap") else "no"}</td>')
+                   f'<td><span class="chip {st_cls}">{esc(st)}</span></td><td>{"yes" if p.get("in_sitemap") else "no"}</td><td>{cnt}</td>')
             if facts:
+                dep = f.get("depth")
                 row += (f'<td>{esc(f.get("title", ""))}</td><td>{esc(f.get("word_count", ""))}</td>'
+                        f'<td>{esc(f.get("inlinks", "—"))} / {"—" if dep is None else esc(dep)}</td>'
                         f'<td class="mono">{esc(", ".join(f.get("schema_types", [])) or "—")}</td>')
             out.append(row + "</tr>")
         out.append("</tbody></table></div></section>")
@@ -216,7 +308,8 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
     # findings per dimension
     for d in ("seo", "geo", "aeo"):
         rows = [f for f in findings if f.get("dimension") == d and f.get("status") != "not-assessed"]
-        out.append(f'<section id="{d}"><h2>{DIM_NAME[d]} findings <span class="muted">— {DIM_SUB[d]}</span></h2>')
+        c = status_counts(findings, d)
+        out.append(f'<section id="{d}"><h2>{DIM_NAME[d]} findings <span class="muted">— {DIM_SUB[d]} · {c["fail"]} fail · {c["warn"]} warn · {c["pass"]} pass</span></h2>')
         if not rows:
             out.append('<p class="muted">No findings recorded for this dimension.</p></section>')
             continue
@@ -234,17 +327,38 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
     matrix = [f for f in findings if f.get("status") in ("fail", "warn")]
     matrix.sort(key=lambda f: (PRIORITY_ORDER.get(f.get("priority"), 9), {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(f.get("severity"), 4)))
     out.append('<section id="matrix"><h2>Priority matrix</h2>')
+    has_verify = any(f.get("verify") for f in matrix)
     if matrix:
-        out.append('<div class="tablewrap"><table><thead><tr><th>Priority</th><th>Issue</th><th>Dim</th><th>Effort</th><th>Impact</th><th>Owner</th><th>Exact change</th></tr></thead><tbody>')
+        out.append('<div class="tablewrap"><table><thead><tr><th>Priority</th><th>Issue</th><th>Dim</th><th>Effort</th><th>Impact</th><th>Owner</th><th>Exact change</th>' + ("<th>Verify</th>" if has_verify else "") + '</tr></thead><tbody>')
         for f in matrix:
             pr = f.get("priority", "medium")
             out.append(f'<tr><td><span class="chip p-{esc(pr)}">{esc(PRIORITY_LABEL.get(pr, pr))}</span></td>'
                        f'<td>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span></td>'
                        f'<td>{esc(DIM_NAME.get(f.get("dimension"), f.get("dimension")))}</td><td>{esc(f.get("effort"))}</td><td>{esc(f.get("impact"))}</td>'
-                       f'<td>{esc(f.get("owner"))}</td><td>{esc(f.get("fix"))}</td></tr>')
+                       f'<td>{esc(f.get("owner"))}</td><td>{esc(f.get("fix"))}</td>' + (f'<td>{esc(f.get("verify", ""))}</td>' if has_verify else "") + '</tr>')
         out.append("</tbody></table></div>")
+
     else:
         out.append('<p class="muted">Nothing to fix — every check passed or was not assessed.</p>')
+    out.append("</section>")
+
+    # roadmap derived from priorities
+    out.append('<section id="roadmap"><h2>Roadmap</h2>')
+    na_items = doc.get("not_assessed", [])
+    decisions_ = [f for f in findings if f.get("severity") == "info" and f.get("owner") == "human"]
+    leading = [f for f in findings if f.get("leading_indicator")]
+    for title, key, blurb in PHASES:
+        out.append(f'<div class="phase"><h3>{esc(title)}</h3><p class="muted">{esc(blurb)}</p>')
+        if key == "ongoing":
+            items = [f'<li>Decide: {esc(f.get("signal"))} — {esc(f.get("fix"))}</li>' for f in decisions_]
+            items += [f'<li>Prove with a tool: {esc(n.get("signal"))} — needs {esc(n.get("needs"))}</li>' for n in na_items]
+            items += [f'<li>Watch: {esc(f.get("leading_indicator"))} <span class="muted">({esc(f.get("signal"))})</span></li>' for f in leading]
+            items.append("<li>Re-run the audit; the next report diffs against this one by finding id.</li>")
+        else:
+            wanted = set(key.split("+"))
+            items = [f'<li><span class="chip p-{esc(f.get("priority"))}">{esc(PRIORITY_LABEL.get(f.get("priority"), ""))}</span> {esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> — {esc(f.get("owner"))}</li>' for f in matrix if f.get("priority") in wanted]
+        out.append(('<ul class="plain">' + "".join(items) + "</ul>") if items else '<p class="muted">nothing in this phase</p>')
+        out.append("</div>")
     out.append("</section>")
 
     # decisions
@@ -273,6 +387,14 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
             out.append(f"<tr><td>{esc(n.get('signal'))}</td><td>{esc(n.get('needs'))}</td><td>{'yes' if n.get('installed') else 'no'}</td></tr>")
         out.append("</tbody></table></div></section>")
 
+    # methodology
+    tiers_used = ["plain fetch (collect.py)"] + (["rolepod-uiproof rendered DOM / CWV / a11y"] if tiers.get("b") else []) + (["connectors"] if tiers.get("c") else [])
+    out.append('<section id="method"><h2>How to read the scores</h2>'
+               '<p>Each dimension is scored 1–10 from the checklist hit-rate, weighted by page role (home and money pages count more than posts, posts more than utility pages). '
+               'Bands: 1–3 critical · 4–5 below baseline · 6–7 solid · 8–9 strong · 10 model. Cover cards colour by score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical. '
+               'Every finding quotes the page and the tag; "missing" is claimed only after every fetched page was checked; anything the collection tier could not see is listed under Not assessed with the tool that would prove it. '
+               f'Data tiers used: {esc(", ".join(tiers_used))}. Findings keep a stable id so the next audit can diff against this one.</p></section>')
+
     # glossary
     if mode == "full":
         out.append('<section id="glossary"><h2>Glossary</h2><dl class="gloss">' + "".join(f"<dt>{esc(t)}</dt><dd>{esc(d)}</dd>" for t, d in GLOSSARY) + "</dl></section>")
@@ -297,6 +419,7 @@ def main(argv=None) -> int:
     ap.add_argument("--out")
     ap.add_argument("--collect", help="collector collect.json to add title / words / schema to the pages table")
     ap.add_argument("--artifact", action="store_true", help="fragment form for the Claude Code Artifact tool")
+    ap.add_argument("--previous", help="older sidecar for the same host — adds the Since-last-audit section")
     a = ap.parse_args(argv)
     with open(a.sidecar, encoding="utf-8") as f:
         doc = json.load(f)
@@ -304,7 +427,12 @@ def main(argv=None) -> int:
     if a.collect:
         with open(a.collect, encoding="utf-8") as f:
             collect = json.load(f)
-    title, body = render(doc, collect)
+    prev = None
+    if a.previous:
+        with open(a.previous, encoding="utf-8") as f:
+            prev = json.load(f)
+        print(compare_line(compare(doc, prev)), file=sys.stderr)
+    title, body = render(doc, collect, prev)
     text = to_artifact(title, body) if a.artifact else to_document(title, body)
     out = a.out
     if not out:

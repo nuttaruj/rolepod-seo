@@ -14,7 +14,8 @@ every field below is present there.
 | `schema` | string | always `rolepod-seo/report` |
 | `schema_version` | int | `1` |
 | `generated_at` | string | ISO 8601 UTC |
-| `site` | object | `base_url`, `host`, `mode` (`quick` \| `full`) |
+| `site` | object | `base_url`, `host`, `mode` (`quick` \| `full`), optional `site_type` |
+| `site.site_type` | object | optional — `{ type, confidence, signals }` from the collector: `saas` \| `ecommerce` \| `local` \| `publisher` \| `agency` \| `unknown`; `confidence` `high` \| `low` \| `none` |
 | `summary` | string | optional — the executive summary (3–6 sentences); the HTML renderer generates one when absent |
 | `collection` | object | what was collected and how (below) |
 | `scores` | object | `seo`, `geo`, `aeo` (below) |
@@ -60,6 +61,8 @@ every field below is present there.
 | `findings[].effort` | enum | `S` \| `M` \| `L` |
 | `findings[].impact` | enum | `H` \| `M` \| `L` |
 | `findings[].priority` | enum | `critical` \| `high` \| `medium` \| `quick-win` |
+| `findings[].verify` | string | optional — how to prove the fix landed (a command and the value to expect); shown as a matrix column |
+| `findings[].leading_indicator` | string | optional — what the owner watches without re-auditing (a Search Console query, an inbound-link count); listed in the roadmap's Ongoing phase |
 
 AI-bot crawl policy is emitted with `severity: info`, `status: pass`, and
 `owner: human` — it is a decision, not a defect (brief 02).
@@ -72,6 +75,13 @@ title, description, headings, canonical, robots, word count, schema types,
 author / FAQ signals …) and `site` (robots verdict per bot, sitemap facts,
 duplicates, redirect chains, host variants). It is an input to the audit;
 the sidecar above is the output. Both are additive.
+
+## Diffing two audits
+
+Finding `id`s are stable per site, so two sidecars diff by set operations:
+`render_report.py current.json --previous older.json` reports score deltas
+and fixed / new / still-open findings, and prints the same one-liner for
+the chat summary. No database, no extra format.
 
 ## Rendered forms (v0.3.0)
 

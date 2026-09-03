@@ -72,6 +72,7 @@ Owner: content-strategist (audience: prospect) · Depends on: <FP-x or —>
 Brief:  reports/seo-brief-<slug>-<date>.md   (from /seo-page-brief — run it first if missing)
 Ask:    <one line: what the page must do that it does not do today, e.g. "40–60-word answer under the H1 for 'emergency plumber cost leeds'">
 Verify: collect.py on the URL → word_count ≥ <target>, question_headings ≥ <n>, faq_visible / author_present as the brief requires
+Leading indicator: <what the owner watches without re-auditing — e.g. Search Console impressions for "<query>" over 4 weeks, or the page's inbound links>
 ```
 
 ## human — decision

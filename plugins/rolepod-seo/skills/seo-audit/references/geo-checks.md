@@ -37,8 +37,9 @@ page. Three groups: trust surface, synthesizability, technical access.
 | AI-bot crawl policy | see below — a decision, not a defect | `robots.agents` verdicts | info (decision) |
 | Rendered-only content | none of title / description / body only after JS | Tier A vs Tier B | high |
 | Rich schema beyond basics | `Person` for authors; `Dataset` / `ClaimReview` only when honest; `speakable` on key answers | `schema_types` | low |
-| `llms.txt` | optional; unsettled standard | `llms_txt.present` | info (low weight — say so) |
+| `llms.txt` | Google Search ignores it (AI optimization guide, 2026-05-15, updated 2026-07-10: neither helps nor harms); harmless; optional for other services | `llms_txt.present` | info — report presence, never recommend it, never call it a citation lever |
 | Clean HTML structure | headings carry the outline; no heading-as-styling | the heading list | low |
+| Agent actionability | interactive elements are real `<button>` / `<a>` / labelled inputs with programmatic names, visible in the accessibility tree, stable layout (CLS), no critical action hidden behind an overlay — what Lighthouse's *Agentic Browsing* category (13.3, default since 2026-05-07, pass-ratio not a score) checks | rolepod-uiproof `audit_a11y` findings (names / labels, tree) + `measure_cwv` CLS; or `npx lighthouse <url> --only-categories=agentic-browsing` | medium on money / booking / checkout pages; **not assessed** until one of those ran |
 
 ### AI-bot policy — how to report it
 
@@ -61,3 +62,11 @@ e.g. `Disallow: /` under `User-agent: *` — that is an SEO critical.
 
 Also note that robots.txt is advisory and not every agent honors it; the
 report should not promise enforcement.
+
+### Dated facts this file relies on
+
+| Claim | Date | Source |
+|---|---|---|
+| Google Search ignores `llms.txt` and other AI text files | guide published 2026-05-15, updated 2026-07-10 | https://developers.google.com/search/docs/fundamentals/ai-optimization-guide |
+| Lighthouse Agentic Browsing category, default on | 13.3 (2026-05-07), Chrome 150+ | https://developer.chrome.com/docs/lighthouse/agentic-browsing/scoring |
+| `Google-Extended` controls Gemini training, not Search or AI Overviews | ongoing | https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers |

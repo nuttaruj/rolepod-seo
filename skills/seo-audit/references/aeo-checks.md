@@ -27,9 +27,9 @@ the shape of the answer on the page; GEO is about trust and access.
 
 | Check | Threshold | Evidence | Severity |
 |---|---|---|---|
-| `FAQPage` where FAQ is visible | `faq_visible` true → `faq_schema` true | both flags + one Q/A | high (page found in `pages.tsv` with `faq_visible` = y and `faq_schema` = n) |
-| `FAQPage` matches visible text | every `Question.name` appears on the page | a mismatch, if any | medium |
-| `HowTo` on procedural content | steps on the page = `HowToStep[]` | the block | medium |
+| `FAQPage` where FAQ is visible | `faq_visible` true → `faq_schema` true | both flags + one Q/A | **low / info** — Google retired FAQ rich results for all sites on 2026-05-07; the block is a structural signal for answer engines only. Never write "missing FAQ schema" as a defect, never promise a SERP feature; `QAPage` for real user Q&A |
+| `FAQPage` matches visible text | every `Question.name` appears on the page | a mismatch, if any | medium (misleading markup) |
+| `HowTo` on procedural content | steps on the page = `HowToStep[]` | the block | low — no Google rich result since 2023-09-13; structural signal only |
 | `speakable` on key answers | `SpeakableSpecification` with `cssSelector` or `xpath` on the answer block | the block | low |
 | `Question` count sane | no schema for FAQs that are not on the page | the block vs the page | high (misleading markup) |
 
@@ -47,7 +47,8 @@ the shape of the answer on the page; GEO is about trust and access.
 
 - Answer pages (FAQ, guides, "how much does X cost") carry the most weight
   in AEO; a homepage without question headings is normal, not a finding.
-- One well-formed answer block that mirrors `FAQPage` schema beats ten
-  questions with no direct answer — score shape over count.
+- One well-formed visible answer block beats ten questions with no direct
+  answer — score shape over count. Schema no longer moves the AEO score by
+  more than a step; the visible answer does.
 - When no target queries were given, infer 3–5 from titles and H1s and say
   which ones the assessment used.

@@ -13,7 +13,9 @@ Artifact are rendered from it.
 | GEO | <score>/10 · <band> — <one-line driver> |
 | AEO | <score>/10 · <band> — <one-line driver> |
 | Top priorities | 1. <issue> (<page>) · 2. <issue> (<page>) · 3. <issue> (<page>) |
+| Quick wins | <up to 3 one-file changes, page named> |
 | Biggest strength | <what, with the page> |
+| Since last audit | <the render_report --previous line: "SEO 6→7 · fixed 3 · new 1 · still open 9" — or omit the row> |
 | Report | reports/seo-audit-<host>-<date>.md · .json · <artifact link or "—"> |
 ```
 
@@ -91,7 +93,8 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
   "schema": "rolepod-seo/report",
   "schema_version": 1,
   "generated_at": "2026-09-03T10:00:00Z",
-  "site": { "base_url": "https://example.com/", "host": "example.com", "mode": "quick" },
+  "site": { "base_url": "https://example.com/", "host": "example.com", "mode": "quick",
+            "site_type": { "type": "local", "confidence": "high", "signals": { "local": ["home: address + phone"] } } },
   "summary": "Three to six sentences: overall state, the first fix, the biggest strength.",
   "collection": {
     "tiers": { "a": true, "b": false, "c": false },
@@ -118,7 +121,9 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
       "owner": "wplab",
       "effort": "S",
       "impact": "H",
-      "priority": "critical"
+      "priority": "critical",
+      "verify": "collect.py --urls one.txt → canonical_ok = self",
+      "leading_indicator": "Search Console: the post's own URL appears under Pages within 2 weeks"
     }
   ],
   "strengths": [
@@ -139,7 +144,8 @@ not-assessed. `severity`: critical | high | medium | low | info.
 frontend-developer | content-strategist | human. `effort`: S | M | L.
 `impact`: H | M | L. `priority`: critical | high | medium | quick-win.
 `id` is stable across runs of the same site: `<dimension>-<signal>-<slug>`.
-`summary` (optional) is the executive summary; `status_label` (optional,
+`verify` and `leading_indicator` are optional per finding (see
+`docs/report-schema.md`). `summary` (optional) is the executive summary; `status_label` (optional,
 derived from the score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical) is
 what the HTML cover shows — the renderer computes it when absent.
 
@@ -147,12 +153,16 @@ what the HTML cover shows — the renderer computes it when absent.
 
 Rendered from the sidecar by `scripts/render_report.py`; never hand-written.
 Sections in order: cover (host, mode, date, pages, tiers; three score cards
-colored by `status_label`), executive summary (`summary`, or generated
-from scores + first fix), pages audited (+ title / words / schema with
-`--collect`), SEO / GEO / AEO findings tables (Signal · Evidence · Fix ·
-Page · Status chip), priority matrix (priority chip · Issue · Dim · Effort ·
-Impact · Owner · Exact change), decisions for the owner (`info` + `human`
-findings), what's working, not assessed, glossary (Full mode). Inline CSS
+colored by `status_label` with fail / warn / pass counts), executive
+summary (site type, `summary` or generated text, Fix-first and Quick-wins
+boxes), since last audit (with `--previous`), pages audited (findings per
+page; + title / words / links-in / depth / schema with `--collect`), SEO /
+GEO / AEO findings tables (Signal · Evidence · Fix · Page · Status chip),
+priority matrix (priority chip · Issue · Dim · Effort · Impact · Owner ·
+Exact change · Verify), roadmap derived from priorities (week 1 / weeks 2–3
+/ month 2 / ongoing with decisions, not-assessed and leading indicators),
+decisions for the owner, what's working, not assessed, how to read the
+scores, glossary (Full mode). Inline CSS
 only, light / dark tokens, a "Save as PDF" button (`window.print()` only —
 no download link, no PDF library; the Claude Artifact viewer blocks
 page-initiated downloads and may restrict print, hence the ⌘P / Ctrl+P

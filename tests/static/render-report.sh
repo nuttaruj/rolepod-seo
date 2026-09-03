@@ -6,6 +6,18 @@ cd "$(dirname "$0")/../.."
 OUT=tests/fixture/.out/render; rm -rf "$OUT"; mkdir -p "$OUT"
 python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out "$OUT/report.html" >/dev/null
 python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --artifact --out "$OUT/report.artifact.html" >/dev/null
+# an older sidecar: one finding gone (fixed), one new, scores lower
+python3 - "$OUT" <<'PY2'
+import json, sys
+d = json.load(open("tests/fixtures/sample-report.json"))
+d["generated_at"] = "2026-08-01T10:00:00Z"
+d["scores"]["seo"]["score"] = 4; d["scores"]["seo"]["band"] = "below-baseline"
+d["findings"] = [f for f in d["findings"] if f["id"] != "aeo-faq-schema-faq"]
+d["findings"].append(dict(id="seo-title-missing-about", dimension="seo", signal="title", page="http://127.0.0.1:8765/about.html", severity="critical", status="fail", evidence="<title></title>", fix="add a title", owner="frontend-developer", effort="S", impact="H", priority="critical"))
+json.dump(d, open(sys.argv[1] + "/previous.json", "w"))
+PY2
+prev_line=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --previous "$OUT/previous.json" --out "$OUT/report.prev.html" 2>&1 >/dev/null)
+grep -q "since 2026-08-01: SEO 4→6, GEO 5→5, AEO 5→5 · fixed 1 · new 1 · still open 2" <<<"$prev_line" || { echo "  ✗ --previous one-liner: $prev_line"; exit 1; }
 python3 - "$OUT" <<'PY'
 import importlib.util, re, sys
 sys.dont_write_bytecode = True
@@ -39,6 +51,17 @@ check('class="chip p-critical">Critical<' in doc and 'class="chip p-quick-win">Q
 check('class="chip fail">Fail<' in doc and 'class="chip pass">Pass<' in doc, "status chips rendered")
 check("<th>Exact change</th>" in doc and "<th>Owner</th>" in doc, "matrix columns")
 check("ai-bot-policy" in doc and 'id="decisions"' in doc, "info/human finding lands in Decisions")
+prevdoc = open(f"{out}/report.prev.html", encoding="utf-8").read()
+check('<section id="roadmap"' in doc and "Week 1 — unblock" in doc and "Ongoing — decide, measure, re-audit" in doc, "roadmap phases derived from priorities")
+check("<h3>Fix first</h3>" in doc and "<h3>Quick wins</h3>" in doc, "fix-first + quick-wins boxes in the summary")
+check('<section id="method"' in doc and "How to read the scores" in doc, "methodology section")
+check("Site type: <strong>local service</strong>" in doc, "site type line from site.site_type")
+check("<th>Verify</th>" in doc and "canonical_ok = self" in doc, "verify column when a finding carries verify")
+check("Watch: Search Console" in doc, "leading indicator lands in the Ongoing phase")
+check('1 fail</span>' in doc and 'class="chip fail">404</span>' in doc, "per-page finding counts + status chips in the pages table")
+check(doc.count("</b> fail · <b>") == 3, "fail/warn/pass counts on the three cards")
+check('<section id="since"' in prevdoc and "<h3>Fixed</h3>" in prevdoc and "<h3>New</h3>" in prevdoc, "since-last-audit section with --previous")
+check('<section id="since"' not in doc, "no since section without --previous")
 for needle in ("<script", "javascript:", "download=", "blob:", "jspdf"):
     check(needle not in doc.lower(), f"no {needle} in the report")
 check('onclick="window.print()"' in doc and "Save as PDF" in doc and "Ctrl+P" in doc, "Save as PDF button (window.print) + keyboard fallback")
@@ -46,4 +69,4 @@ check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page
 check(doc.count("window.print()") == 1, "exactly one print call, no other JS")
 sys.exit(bad)
 PY
-echo "  ✓ render: document + artifact forms, print CSS + Save as PDF button, tokens, no external assets, chips"
+echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, tokens, no external assets"

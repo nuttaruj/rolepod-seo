@@ -6,6 +6,70 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-03
+
+### Changed — facts
+
+- **FAQ rich results are gone for every site** (Google, 2026-05-07).
+  `schema-minimums.md` and `aeo-checks.md` no longer describe the 2023
+  government / health restriction; a visible FAQ without `FAQPage` is now a
+  low / info structural signal, never a defect, and `QAPage` is named for
+  real user Q&A. `validate.py` warns on `FAQPage`, `HowTo` (2023-09-13) and
+  the seven types Google retired on 2025-06-12 (`ClaimReview`, `CourseInfo`,
+  `EstimatedSalary`, `LearningVideo`, `SpecialAnnouncement`,
+  `VehicleListing`) with the date and a Google-owned source; the static
+  gate pins the reference table and the script together and rejects
+  non-Google sources.
+- **llms.txt**: Google's AI optimization guide (2026-05-15, updated
+  2026-07-10) says Search ignores it — the GEO reference now reports
+  presence only and never recommends it.
+- New GEO row **agent actionability** (what Lighthouse's Agentic Browsing
+  category checks): hands to rolepod-uiproof `audit_a11y` + `measure_cwv`
+  or `npx lighthouse --only-categories=agentic-browsing`; "not assessed"
+  until one ran. `/seo-audit` Tier B adds `audit_a11y` on the homepage and
+  one booking / checkout / contact page.
+- Dated claims in the references now carry their source URL.
+
+### Added — collector
+
+- Refuses private, loopback, link-local and cloud-metadata targets, also as
+  redirect targets (`--allow-private` for a site you run locally). Sitemap
+  XML is capped at 20 MiB and rejected when it carries a DOCTYPE; decoding
+  honours BOM → header charset → `<meta charset>`.
+- Link graph among fetched pages: `inlinks` and click `depth` per page,
+  `link_graph.unreachable_from_home` and `low_inlinks` (money / answer /
+  trust pages with ≤1 inbound link). Near-duplicate pages by word-shingle
+  overlap (`near_duplicates[]`). Response-header facts (`security.hsts`,
+  CSP, `X-Content-Type-Options`, server). Weighted **site type** detection
+  (saas / ecommerce / local / publisher / agency with confidence and the
+  signals). New `pages.md` column `in/depth`.
+
+### Added — report
+
+- Sidecar (additive, still schema v1): optional `findings[].verify`,
+  `findings[].leading_indicator`, `site.site_type`.
+- HTML: Fix-first and Quick-wins boxes in the summary, site type line,
+  fail / warn / pass counts on the score cards and section headers,
+  findings-per-page and links-in / depth in the pages table, a Verify
+  column in the matrix, a **roadmap** derived from priorities (week 1 /
+  weeks 2–3 / month 2 / ongoing with decisions, not-assessed and leading
+  indicators), a "How to read the scores" section. `--previous
+  older.json` adds **Since last audit** (score deltas, fixed / new / still
+  open by finding id) and prints the same line for the chat summary.
+- Chat summary gains Quick wins and Since-last-audit rows.
+- `seo-checks.md`: per-role word-count floors and location-page thresholds
+  (heuristics), inbound-link / click-depth / HSTS / near-duplicate rows.
+  `handoff-formats.md`: a leading-indicator line for content items.
+
+### Tests
+
+- Skill lint now resolves every `references/` / `scripts/` / `templates/`
+  mention in every file of a skill and fails on orphan supporting files.
+- Fixture: collector refusal paths, link graph, site type, security
+  headers, near-duplicates; render: roadmap, quick wins, delta, verify
+  column, methodology; validator: retired-type warning and placeholder
+  failure.
+
 ## [0.3.1] — 2026-09-03
 
 ### Added

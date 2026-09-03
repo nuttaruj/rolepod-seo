@@ -37,7 +37,7 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 |---|---|---|
 | Chat | summary + priority matrix | one table (pages · date · three scores with band · top 3 priorities · biggest strength) and the matrix with colored priority dots (🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win) |
 | Files | markdown report + JSON sidecar | `reports/seo-audit-<host>-<date>.md` (findings tables with evidence, priority matrix, what's working, glossary) and `.json` with a stable, additive schema ([docs/report-schema.md](docs/report-schema.md)) that the other skills and outside tools consume |
-| Visual | HTML report → Save as PDF (browser print) | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: navy cover with three score cards colored by band, findings tables with colored status cells, priority matrix with colored chips, decisions, what's working, not assessed, glossary. Self-contained, no external assets, light and dark. A "Save as PDF" button opens the browser's print dialog (or ⌘P / Ctrl+P) |
+| Visual | HTML report → Save as PDF (browser print) | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: navy cover with three score cards colored by band, fix-first and quick-wins boxes, findings tables with colored status cells, priority matrix with colored chips and a verify column, a roadmap derived from the priorities (week 1 / weeks 2–3 / month 2 / ongoing), decisions, what's working, not assessed, how to read the scores, glossary. `--previous older.json` adds "Since last audit" (score deltas, fixed / new / still open by finding id). Self-contained, no external assets, light and dark. A "Save as PDF" button opens the browser's print dialog (or ⌘P / Ctrl+P) |
 | Claude Code | Artifact | the same HTML published as a private page; share it from the page if you want |
 
 No docx export and no PDF tooling: the owner chose HTML + Artifact as the
@@ -104,6 +104,13 @@ python3 skills/seo-audit/scripts/collect.py https://example.com --mode quick
 Add `.rolepod-seo/` and `reports/` to your `.gitignore` if you do not want
 audit artifacts in git.
 
+The collector refuses private, loopback and cloud-metadata targets (also
+as redirect targets); pass `--allow-private` for a site you run locally.
+It also builds the internal link graph of the fetched pages (inbound links,
+click depth), flags near-duplicate pages and detects the site type (SaaS /
+e-commerce / local / publisher / agency) so the report can say what matters
+most for that kind of site.
+
 ## Works with
 
 | Companion | What it adds | Detected how |
@@ -120,9 +127,12 @@ would have added as "not assessed (needs …)".
 - **0.1.0** — `/seo-audit`.
 - **0.2.0** — `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`.
 - **0.3.0** — visual tier: HTML report rendered from the sidecar, Artifact
-  on Claude Code, colored chat priority matrix (this release).
-- **0.4.x** — cross-page checks hardened (redirect chains, hreflang
-  reciprocity).
+  on Claude Code, colored chat priority matrix.
+- **0.4.0** — facts refreshed (FAQ / retired rich results / llms.txt),
+  collector hardening, link graph + site type, roadmap + quick wins +
+  since-last-audit in the report (this release).
+- **0.5.x** — hreflang reciprocity, per-type weighting from the detected
+  site type.
 - **Phase 2** — connectors as a small MCP server in this repo: Google
   Search Console (read-only), keyword / SERP data, rank and AI-visibility
   tracking, log-file bot analysis. Each only when a real need is stated.

@@ -35,6 +35,8 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | Twitter Card | `twitter:card` present | value | low |
 | Mixed content | no `http://` assets on an https page | `mixed_content` count | high |
 | Favicon | `<link rel=icon>` | `favicon` | low |
+| Inbound links | money / answer / trust pages have ≥2 inbound links from other fetched pages | `inlinks` (per page) + `link_graph.low_inlinks` | medium; high for a money page with 0–1 |
+| Click depth | key pages ≤3 clicks from home | `depth` (per page); `link_graph.unreachable_from_home` | medium; high when unreachable |
 
 ## Site level — cross-page (from `site.json`)
 
@@ -54,12 +56,14 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | Duplicate titles / descriptions | none | `duplicates` | see per-page rows |
 | hreflang reciprocity | every alternate links back; `x-default` present | the `<link>` set on both pages | high when multilingual |
 | HTTPS everywhere | all fetched pages https | `https` | critical |
+| HSTS | `Strict-Transport-Security` on the home response | `security.hsts` | low |
+| Near-duplicate pages | no two fetched pages ≥70 % identical body text (templated location / service pages) | `near_duplicates[]` pairs with similarity | medium; high when both are money pages |
 
 ## Per page — content quality
 
 | Check | Threshold | Evidence | Severity |
 |---|---|---|---|
-| Word count vs role | money / pillar ≥ 1500 desirable; any ranking page ≥ 300; utility exempt | `word_count` + role | medium (thin) |
+| Word count vs role | per-role floor below; any ranking page ≥ 300; utility exempt | `word_count` + role | medium (thin) |
 | Topic focus | the primary query answered in the first screen | quote the first paragraph | medium |
 | Freshness | visible date on time-sensitive content | `date_visible` | low; medium on news / guides |
 | Scannability | short paragraphs, lists, tables where the reader compares | `lists` / `tables` | low |
@@ -67,6 +71,20 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 
 Word count in the collector is all visible text (nav and footer included);
 subtract roughly 80–150 for chrome on a typical template before judging thin.
+
+Per-role floors (heuristics, not Google rules — what a page of that role
+usually needs to answer its query fully; a shorter page that answers is fine
+and says so in the finding):
+
+| Page role | Floor | Notes |
+|---|---|---|
+| home | 500 | value proposition, what / who / where, proof |
+| money (service, feature, product) | 800 (product 400) | the offer, who it is for, proof, price / next step |
+| answer (FAQ, guide) | 800 | each question gets its 40–60-word answer |
+| blog / pillar | 1500 | depth; pillar pages 1500+ |
+| trust (about, contact, case study) | 400 | contact pages exempt |
+| category / listing | 400 | unique intro, not only a product grid |
+| location pages | 500–600 each, ≥60 % unique | ≥30 near-identical location pages → warn; ≥50 → stop and ask the owner |
 
 ## Structured data
 
