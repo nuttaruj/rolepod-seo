@@ -6,6 +6,41 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-03
+
+### Added
+
+- **`/seo-fix-plan`** — loads the audit sidecar (or the priority matrix),
+  keeps `fail` / `warn` findings, orders them crawl blockers → indexation
+  → canonical / duplicates → redirects → schema → content → polish, and
+  emits one block per item with owner, exact change, dependency and the
+  verification command. Hand-off formats per owner in
+  `references/handoff-formats.md`: rolepod-wplab payloads
+  (`rolepod_wp_seo_set`, `rolepod_wp_redirect_set`, plugin settings),
+  frontend-developer file + snippet, content-strategist brief pointer,
+  human decisions, rolepod-uiproof proof-first. Executes approved WordPress
+  items only, under the companion's prod guard.
+- **`/seo-schema`** — JSON-LD per page type from facts on the page,
+  `@graph` with stable `@id`s, required + recommended properties per type
+  in `references/schema-minimums.md` (14 types; single source — the
+  seo-audit reference carries the compact table), placement hand-off per
+  platform. `scripts/validate.py` (stdlib) parses a file, URL or stdin,
+  walks the graph and reports missing required properties; `make
+  test-static` keeps the doc and the validator in lockstep.
+- **`/seo-page-brief`** — one-page content brief for content-strategist:
+  intent per query, the 40–60-word direct answer (the only copy in the
+  brief), question-phrased outline with shapes and lengths, entities /
+  facts / proof with sources, E-E-A-T elements, schema type with required
+  fields, internal links in and out, verification columns.
+  `templates/page-brief.md` is the artifact shape. Landed a release
+  earlier than the roadmap's 0.3.0 because it shares the fix-plan hand-off.
+- Collector: `site.platform_hints` (generator meta + WordPress / Next.js /
+  Shopify / Wix / Squarespace / Webflow / HubSpot / Framer / Astro /
+  Drupal / Joomla signals) so `/seo-fix-plan` can pick the owner; CA-bundle
+  discovery for https on python.org macOS builds; `--insecure` recorded as
+  `tls_verify: false`; shallow-first key-page selection in Quick mode.
+- `docs/decisions.md` — how the brief's open items were resolved.
+
 ## [0.1.0] — 2026-09-03
 
 ### Added
@@ -36,5 +71,5 @@ schema is additive-only but the skills may change shape at any release.
 
 ### Not in this release
 
-- `/seo-fix-plan`, `/seo-schema` (planned 0.2.0), `/seo-page-brief` (0.3.0).
+- `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief` (shipped in 0.2.0).
 - Any MCP server, hook, or connector (Phase 2).

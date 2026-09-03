@@ -4,9 +4,11 @@ SEO + GEO + AEO site audit skills for AI coding agents. A sibling of
 [`rolepod`](https://github.com/nuttaruj/rolepod): install it in the projects
 that need search work, and it stays out of every other session.
 
-`/seo-audit` fetches what a crawler sees, checks it against three lenses,
-scores each 1–10 with quoted evidence, and ends in a priority matrix that
-other tools can execute:
+Four skills, one workflow: `/seo-audit` fetches what a crawler sees,
+checks it against three lenses, scores each 1–10 with quoted evidence and
+ends in a priority matrix; `/seo-fix-plan` turns that matrix into
+hand-offs other tools execute; `/seo-schema` writes and validates the
+JSON-LD; `/seo-page-brief` briefs the copy. The lenses:
 
 - **SEO** — classic search: titles, meta, headings, canonicals, robots,
   sitemap, redirects, structured data, internal links, content depth.
@@ -20,7 +22,16 @@ other tools can execute:
 Phase 1 is **skills only** — no MCP server, no hooks, zero per-session
 tool-schema cost. The audit needs Python 3 and nothing else.
 
-## What you get
+## The four skills
+
+| Skill | Ask it | Gives you |
+|---|---|---|
+| `/seo-audit` | "audit example.com for SEO and AI search" | Quick / Full audit, three scores with evidence, markdown report + JSON sidecar, priority matrix |
+| `/seo-fix-plan` | "apply the audit" | findings in dependency order, one block per item with owner, exact payload / snippet / brief and a verification command; runs approved WordPress writes through rolepod-wplab |
+| `/seo-schema` | "add FAQ schema to /faq" | JSON-LD from facts on the page, validated (`scripts/validate.py`, stdlib), placement hand-off per platform |
+| `/seo-page-brief` | "rewrite /pricing for '<query>'" | intent, 40–60-word answer block, question outline, entities and proof, schema, internal links — for content-strategist |
+
+## What you get from an audit
 
 | Deliverable | Where |
 |---|---|
@@ -102,12 +113,11 @@ would have added as "not assessed (needs …)".
 
 ## Roadmap
 
-- **0.1.0** — `/seo-audit` (this release).
-- **0.2.0** — `/seo-fix-plan` (hand-offs grouped by owner, dependency
-  order) and `/seo-schema` (JSON-LD per page type with required-property
-  validation).
-- **0.3.0** — `/seo-page-brief` (brief for content-strategist: intent,
-  answer block, question set, schema, internal links).
+- **0.1.0** — `/seo-audit`.
+- **0.2.0** — `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief` (this release).
+- **0.3.x** — cross-page checks hardened (redirect chains, hreflang
+  reciprocity), optional docx export behind an explicit flag when the
+  runtime has the dependency.
 - **Phase 2** — connectors as a small MCP server in this repo: Google
   Search Console (read-only), keyword / SERP data, rank and AI-visibility
   tracking, log-file bot analysis. Each only when a real need is stated.
@@ -123,6 +133,8 @@ make render        # copy skills/ + manifests into plugins/rolepod-seo/
 make version-bump VERSION=0.2.0
 make serve-fixture # tests/fixtures/site-a on :8765 for a manual audit run
 ```
+
+Decisions taken during the scaffold: [docs/decisions.md](docs/decisions.md).
 
 `tests/fixtures/site-a` is a tiny fictional plumbing site with deliberate
 defects (cross-domain canonical, FAQ without schema, noindex page in the

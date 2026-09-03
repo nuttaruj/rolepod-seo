@@ -42,6 +42,8 @@ check(s["sitemap"]["url_count"] == 10, f"sitemap url_count 10 (got {s['sitemap']
 check(s["sitemap"]["listed_but_not_200"] == [f"{base}/old-page.html"], "sitemap 404 detected")
 check(s["sitemap"]["listed_but_noindex"] == [f"{base}/blog/post-2.html"], "noindex-in-sitemap detected")
 check(s["llms_txt"]["present"] is False, "llms.txt absent")
+check(s["platform_hints"] == {"generator": "", "signals": []}, f"platform hints empty on the fixture (got {s.get('platform_hints')})")
+check(s["tls_verify"] is True, "tls_verify recorded")
 check(len(s["duplicates"]["descriptions"]) == 1, "duplicate description services/pricing")
 check(s["host_variants"].get("note", "").startswith("not assessed"), "host variants skipped on local")
 by = {p["url"].replace(base, ""): p for p in f["pages"]}

@@ -394,6 +394,7 @@ def page_facts(url: str, res: dict) -> dict:
     faq_visible = bool(p.faq_signals) or p.details >= 2
     row.update(
         {
+            "generator": p.metas.get("generator", ""),
             "title": p.title or "",
             "title_len": len(p.title or ""),
             "description": desc,
@@ -749,6 +750,15 @@ def main(argv=None) -> int:
     else:
         variants = {"note": "not assessed (local host)"}
 
+    body_l = home["body"][:400_000].lower()
+    platform_signals = [name for name, needle in (
+        ("wordpress", b"/wp-content/"), ("nextjs", b"/_next/"), ("nuxt", b"/_nuxt/"), ("gatsby", b"/gatsby"),
+        ("shopify", b"cdn.shopify.com"), ("wix", b"wixstatic.com"), ("squarespace", b"squarespace"),
+        ("webflow", b"webflow"), ("hubspot", b"hubspot"), ("framer", b"framerusercontent"),
+        ("astro", b"astro-"), ("drupal", b"/sites/default/files"), ("joomla", b"/media/jui/"),
+    ) if needle in body_l]
+    platform_hints = {"generator": home_row.get("generator", ""), "signals": platform_signals}
+
     orphan_candidates = [path_of(e["loc"]) for e in sitemap["entries"] if norm(e["loc"]) not in {norm(u) for u in home_row.get("_internal_links", [])} and norm(e["loc"]) != norm(base)]
 
     site = {
@@ -758,6 +768,7 @@ def main(argv=None) -> int:
         "home_status": home["status"],
         "https": home["final_url"].startswith("https://"),
         "tls_verify": not a.insecure,
+        "platform_hints": platform_hints,
         "robots": robots_info,
         "sitemap": {
             "declared_in_robots": bool(robot_sitemaps),

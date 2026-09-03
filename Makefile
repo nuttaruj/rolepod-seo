@@ -26,6 +26,7 @@ test-static:
 	@bash tests/static/skills.sh
 	@bash tests/static/parity.sh
 	@bash tests/static/report-schema.sh
+	@bash tests/static/schema-minimums.sh
 	@echo "  ✓ test-static passed"
 
 test-fixture:
