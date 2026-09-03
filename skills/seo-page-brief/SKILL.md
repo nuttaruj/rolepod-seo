@@ -50,7 +50,10 @@ Existing page: run the collector on it (`collect.py <url> --urls one.txt`
 from the seo-audit skill, or reuse a recent `collect.json`) and read the
 row: title, H1, headings, word count, schema, author, date, links. New
 page: collect the two or three most related existing pages instead, for
-internal links and tone.
+internal links and tone. Read `site.site_type` too: it sets which proof
+and schema the brief must ask for (local → NAP, hours, reviews;
+ecommerce → offers, specs; publisher → author, date; saas → pricing,
+comparison; agency → case numbers).
 
 ### 2. Intent
 

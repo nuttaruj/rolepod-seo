@@ -262,6 +262,7 @@ class Page(HTMLParser):
         self.canonical: str | None = None
         self.icon = False
         self.hreflang = 0
+        self.hreflang_links: list[dict] = []
         self.lang = ""
         self.charset = False
         self.h: dict[int, list[str]] = {1: [], 2: [], 3: []}
@@ -321,6 +322,7 @@ class Page(HTMLParser):
                 self.canonical = href
             if "alternate" in rel and a.get("hreflang"):
                 self.hreflang += 1
+                self.hreflang_links.append({"lang": a["hreflang"].strip().lower(), "href": urllib.parse.urljoin(self.base, href)})
             if "author" in rel:
                 self.author_signals.add("link:author")
             if "icon" in rel:
@@ -496,6 +498,7 @@ def page_facts(url: str, res: dict) -> dict:
             },
             "twitter_card": p.metas.get("twitter:card", ""),
             "hreflang_count": p.hreflang,
+            "hreflang": p.hreflang_links,
             "word_count": words,
             "images": p.imgs,
             "images_no_alt": p.imgs_noalt,
@@ -726,6 +729,40 @@ def near_duplicates(rows: list[dict], threshold: float = 0.7, k: int = 8) -> lis
     return sorted(pairs, key=lambda x: -x["similarity"])[:50]
 
 
+def hreflang_report(rows: list[dict]) -> dict:
+    """Self-reference, x-default and reciprocity among the fetched pages that declare hreflang."""
+    fetched = {norm(r["final_url"]): r for r in rows if r.get("status") == 200}
+    fetched.update({norm(r["url"]): r for r in rows if r.get("status") == 200})
+    declared = [r for r in rows if r.get("status") == 200 and r.get("hreflang")]
+    missing_self, missing_xdefault, non_reciprocal = [], [], []
+    unchecked = 0
+    for r in declared:
+        me = norm(r["final_url"])
+        path = path_of(r["url"])
+        alts = {norm(h["href"]): h["lang"] for h in r["hreflang"]}
+        if me not in alts and norm(r["url"]) not in alts:
+            missing_self.append(path)
+        if "x-default" not in alts.values():
+            missing_xdefault.append(path)
+        for alt, lang in alts.items():
+            if alt in (me, norm(r["url"])):
+                continue
+            other = fetched.get(alt)
+            if other is None:
+                unchecked += 1
+                continue
+            back = {norm(h["href"]) for h in other.get("hreflang", [])}
+            if me not in back and norm(r["url"]) not in back:
+                non_reciprocal.append({"page": path, "alternate": path_of(alt), "lang": lang})
+    return {
+        "pages_with_hreflang": len(declared),
+        "missing_self": missing_self,
+        "missing_x_default": missing_xdefault,
+        "non_reciprocal": non_reciprocal,
+        "alternates_not_fetched": unchecked,
+    }
+
+
 SITE_TYPE_RULES = {
     "saas": {"paths": r"/pricing|/plans|/features|/integrations|/docs|/api\b|/sign-?up|/free-trial|/changelog", "text": ("free trial", "sign up", "start free", "per month", "per seat", "integrations")},
     "ecommerce": {"paths": r"/products?/|/collections?/|/cart|/checkout|/shop\b|/category/", "text": ("add to cart", "add to basket", "free shipping", "in stock", "checkout")},
@@ -914,6 +951,19 @@ def main(argv=None) -> int:
         res = fetch(u, a.timeout)
         rows.append(page_facts(u, res))
         log(f"  {res['status'] or 'ERR':>4} {path_of(u)}")
+    if a.mode == "full" and not a.urls:
+        have = {norm(r["url"]) for r in rows}
+        extra: list[str] = []
+        for r in rows:
+            for h in r.get("hreflang", []):
+                u = h["href"]
+                if same_origin(u, base) and norm(u) not in have and not SKIP_RE.search(u) and not ASSET_RE.search(u):
+                    have.add(norm(u))
+                    extra.append(u)
+        for u in extra[:50]:
+            res = fetch(u, a.timeout)
+            rows.append(page_facts(u, res))
+            log(f"  {res['status'] or 'ERR':>4} {path_of(u)}  (hreflang alternate)")
     for r in rows:
         r["role"] = page_role(r["url"], base)
     sitemap_set = {norm(e["loc"]) for e in sitemap["entries"]}
@@ -992,6 +1042,7 @@ def main(argv=None) -> int:
     site["link_graph"] = graph
     site["near_duplicates"] = dups
     site["site_type"] = stype
+    site["hreflang"] = hreflang_report(rows)
     site["security"] = {
         "hsts": "strict-transport-security" in hh,
         "hsts_value": hh.get("strict-transport-security", ""),

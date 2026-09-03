@@ -13,4 +13,6 @@ served origin at test time (`tests/fixture/serve.sh`). Deliberate defects:
 | `blog/post-2.html` | `noindex` yet listed in the sitemap; no meta description; thin (<300 words) |
 | `sitemap.xml` | lists `/old-page.html` (404); `contact.html` has no lastmod |
 | `robots.txt` | blocks GPTBot + CCBot entirely; no `Sitemap:` line |
+| `th/services.html` ↔ `services.html` | reciprocal hreflang pair, but `services.html` has no `x-default` |
+| `th/pricing.html` → `pricing.html` | claims an `en` alternate that does not link back (non-reciprocal) |
 | site | no `llms.txt`; no author pages; About has no `Person` schema |

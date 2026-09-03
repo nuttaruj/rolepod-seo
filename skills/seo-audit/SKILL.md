@@ -144,9 +144,11 @@ count more than blog posts; blog posts more than utility pages.
 | strong | 8–9 | refinements only |
 | model | 10 | rare; needs evidence on every check |
 
-Score from checklist hit-rate weighted by page role. Show the three
-findings that drove each score. Never round up without evidence. A
-dimension with no data is "not assessed (needs X)", never a number.
+Score from checklist hit-rate weighted by page role, then by site type
+when `site.site_type.confidence` is `high` (table in
+`references/seo-checks.md` § Site-type emphasis). Show the three findings
+that drove each score. Never round up without evidence. A dimension with
+no data is "not assessed (needs X)", never a number.
 
 ### 7. Report
 

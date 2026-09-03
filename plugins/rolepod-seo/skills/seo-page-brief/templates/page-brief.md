@@ -1,7 +1,7 @@
 # Page brief — <path> · <date>
 
 **Status today:** <existing: one line from the collector row (words, H1, schema, author) | new page>
-**Role:** <home | money | trust | blog | answer> · **Canonical URL:** <absolute url>
+**Role:** <home | money | trust | blog | answer> · **Site type:** <saas | ecommerce | local | publisher | agency | unknown> · **Canonical URL:** <absolute url>
 **Audience:** <who searches, what they know, what they decide next>
 
 ## Target queries and intent

@@ -38,13 +38,13 @@ for name, d in (("quick", q), ("full", f)):
 s = f["site"]
 check(len(q["pages"]) == 7, f"quick selects home + 6 key pages (got {len(q['pages'])})")
 check(q["site"]["site_type"]["type"] == "local", "quick mode also detects the site type")
-check(len(f["pages"]) == 10, f"full selects every meaningful page incl. sitemap 404 (got {len(f['pages'])})")
+check(len(f["pages"]) == 12, f"full selects every meaningful page incl. sitemap 404 + th alternates (got {len(f['pages'])})")
 check(not any("privacy" in p["url"] for p in f["pages"]), "legal page skipped in full mode")
 check(s["robots"]["agents"]["GPTBot"]["verdict"] == "blocked-all", "GPTBot verdict blocked-all")
 check(s["robots"]["agents"]["ClaudeBot"]["verdict"] == "partial", "ClaudeBot falls to wildcard partial")
 check(s["robots"]["agents"]["Googlebot"]["via"] == "wildcard", "Googlebot via wildcard")
 check(s["sitemap"]["declared_in_robots"] is False, "sitemap not declared in robots")
-check(s["sitemap"]["url_count"] == 10, f"sitemap url_count 10 (got {s['sitemap']['url_count']})")
+check(s["sitemap"]["url_count"] == 12, f"sitemap url_count 12 (got {s['sitemap']['url_count']})")
 check(s["sitemap"]["listed_but_not_200"] == [f"{base}/old-page.html"], "sitemap 404 detected")
 check(s["sitemap"]["listed_but_noindex"] == [f"{base}/blog/post-2.html"], "noindex-in-sitemap detected")
 check(s["llms_txt"]["present"] is False, "llms.txt absent")
@@ -54,9 +54,16 @@ check(s["site_type"]["type"] == "local" and s["site_type"]["confidence"] == "hig
 check(s["security"] == {"hsts": False, "hsts_value": "", "csp": False, "x_content_type_options": "", "server": s["security"]["server"]}, "security headers recorded (none on the fixture)")
 check(s["near_duplicates"] == [], f"no near-duplicate pages on the fixture (got {s['near_duplicates']})")
 g = s["link_graph"]
-check(g["pages_in_graph"] == 10, f"link graph covers every fetched row (got {g['pages_in_graph']})")
+check(g["pages_in_graph"] == 12, f"link graph covers every fetched row (got {g['pages_in_graph']})")
 check(g["unreachable_from_home"] == [], f"every 200 page reachable from home (got {g['unreachable_from_home']})")
-check("/blog/post-1.html" not in g["low_inlinks"] and set(g["low_inlinks"]) <= {"/faq.html", "/pricing.html", "/about.html", "/contact.html", "/services.html"}, f"low_inlinks only lists key pages (got {g['low_inlinks']})")
+check("/blog/post-1.html" not in g["low_inlinks"] and set(g["low_inlinks"]) <= {"/faq.html", "/pricing.html", "/about.html", "/contact.html", "/services.html", "/th/services.html", "/th/pricing.html"}, f"low_inlinks only lists key pages (got {g['low_inlinks']})")
+h = s["hreflang"]
+check(h["pages_with_hreflang"] == 3, f"three pages declare hreflang (got {h['pages_with_hreflang']})")
+check(h["missing_self"] == [], f"every hreflang page lists itself (got {h['missing_self']})")
+check(h["missing_x_default"] == ["/services.html", "/th/pricing.html"], f"x-default missing where the fixture omits it (got {h['missing_x_default']})")
+check(h["non_reciprocal"] == [{"page": "/th/pricing.html", "alternate": "/pricing.html", "lang": "en"}], f"non-reciprocal pair detected (got {h['non_reciprocal']})")
+check(h["alternates_not_fetched"] == 0, "all alternates fetched in full mode")
+check(q["site"]["hreflang"]["alternates_not_fetched"] >= 1, "quick mode reports unfetched alternates instead of guessing")
 check(len(s["duplicates"]["descriptions"]) == 1, "duplicate description services/pricing")
 check(s["host_variants"].get("note", "").startswith("not assessed"), "host variants skipped on local")
 by = {p["url"].replace(base, ""): p for p in f["pages"]}
@@ -67,6 +74,7 @@ check(by["/faq.html"]["question_headings"] == 6, f"faq question headings 6 (got 
 check(by["/services.html"]["h1_count"] == 2 and by["/services.html"]["images_no_alt"] == 1, "services h1x2 + img without alt")
 check(by["/blog/post-2.html"]["noindex"] and by["/blog/post-2.html"]["description_len"] == 0 and by["/blog/post-2.html"]["word_count"] < 300, "post-2 noindex, no description, thin")
 check(by["/"]["schema_types"] == ["Organization", "WebSite"], f"home schema types (got {by['/']['schema_types']})")
+check(by["/th/services.html"]["lang"] == "th" and by["/th/services.html"]["depth"] == 2, "Thai alternate fetched, lang th, depth 2 via services")
 check(set(by["/contact.html"]["contact_signals"]) == {"address", "mailto", "tel"}, "contact NAP signals")
 check(by["/old-page.html"]["status"] == 404, "old-page 404 recorded as a row")
 check(by["/"]["depth"] == 0 and by["/about.html"]["depth"] == 1 and by["/blog/post-1.html"]["depth"] == 2, f"click depth home 0 / about 1 / post-1 2 (got {by['/']['depth']}, {by['/about.html']['depth']}, {by['/blog/post-1.html']['depth']})")
@@ -74,5 +82,5 @@ check(by["/contact.html"]["inlinks"] >= 5 and by["/blog/post-1.html"]["inlinks"]
 check(by["/old-page.html"].get("depth") is None, "404 row has no depth")
 sys.exit(bad)
 PY
-[ $fail -eq 0 ] && echo "  ✓ collector: refuses private/metadata targets; quick + full tables match golden; site facts, link graph, site type verified"
+[ $fail -eq 0 ] && echo "  ✓ collector: refuses private/metadata targets; quick + full tables match golden; site facts, link graph, site type, hreflang reciprocity verified"
 exit $fail

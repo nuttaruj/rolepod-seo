@@ -107,9 +107,10 @@ audit artifacts in git.
 The collector refuses private, loopback and cloud-metadata targets (also
 as redirect targets); pass `--allow-private` for a site you run locally.
 It also builds the internal link graph of the fetched pages (inbound links,
-click depth), flags near-duplicate pages and detects the site type (SaaS /
-e-commerce / local / publisher / agency) so the report can say what matters
-most for that kind of site.
+click depth), flags near-duplicate pages, checks hreflang reciprocity on
+multilingual sites and detects the site type (SaaS / e-commerce / local /
+publisher / agency) so the report can say what matters most for that kind
+of site.
 
 ## Works with
 
@@ -128,11 +129,12 @@ would have added as "not assessed (needs …)".
 - **0.2.0** — `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`.
 - **0.3.0** — visual tier: HTML report rendered from the sidecar, Artifact
   on Claude Code, colored chat priority matrix.
-- **0.4.0** — facts refreshed (FAQ / retired rich results / llms.txt),
+- **0.4.x** — facts refreshed (FAQ / retired rich results / llms.txt),
   collector hardening, link graph + site type, roadmap + quick wins +
-  since-last-audit in the report (this release).
-- **0.5.x** — hreflang reciprocity, per-type weighting from the detected
-  site type.
+  since-last-audit, signal-group breakdown.
+- **0.5.0** — hreflang reciprocity, site-type emphasis in scoring and
+  briefs (this release). Phase 1 is complete: everything runs inside the
+  plugin with Python 3 and no key.
 - **Phase 2** — connectors as a small MCP server in this repo: Google
   Search Console (read-only), keyword / SERP data, rank and AI-visibility
   tracking, log-file bot analysis. Each only when a real need is stated.

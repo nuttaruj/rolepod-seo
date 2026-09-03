@@ -1,6 +1,6 @@
 {
   "name": "rolepod-seo",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "SEO + GEO + AEO site audit for AI coding agents — Quick or Full audit of a site across classic search (SEO), generative engines (GEO: AI Overviews, ChatGPT search, Perplexity) and answer engines (AEO: featured snippets, People Also Ask, voice). Scores 1–10 per dimension with quoted evidence, then a prioritized fix plan that hands off to rolepod-uiproof (rendered DOM, Core Web Vitals), rolepod-wplab (WordPress meta / redirects / schema) and the rolepod parent roles (content-strategist, frontend-developer). Skills only — no MCP server, no hooks, zero per-session tool-schema cost. Ships /seo-audit, /seo-fix-plan, /seo-schema and /seo-page-brief; the audit renders a self-contained HTML report (score cards, colored priority matrix) that is the Artifact on Claude Code.",
   "author": {
     "name": "nuttaruj",

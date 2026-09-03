@@ -6,6 +6,30 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-03
+
+### Added
+
+- **hreflang reciprocity** in the collector: every page's `hreflang`
+  alternates are recorded; Full mode fetches same-origin alternates that
+  nav and sitemap missed; `site.hreflang` reports pages that do not list
+  themselves, pages without `x-default`, non-reciprocal pairs (alternate
+  does not link back — Google ignores those) and, in Quick mode, how many
+  alternates went unchecked instead of guessing. Fixture gains a Thai /
+  English pair with one broken direction.
+- **Site-type emphasis** (guidance, no code): `seo-checks.md` § Site-type
+  emphasis lists, per detected type (local / ecommerce / publisher / saas /
+  agency), the signals that move one severity step up and weigh more when
+  `site.site_type.confidence` is `high`; `/seo-audit` step 6 and
+  `/seo-page-brief` read it; the brief template carries the type.
+
+### Deferred (owner, 2026-09-03)
+
+- Anything that needs an API key (PageSpeed Insights / CrUX field CWV,
+  Search Console, Bing) stays Phase 2. The unauthenticated PSI quota is
+  shared and was already exhausted (HTTP 429) on the first probe, so a
+  keyless script would not be reliable. Phase 1 ends inside the plugin.
+
 ## [0.4.1] — 2026-09-03
 
 ### Added

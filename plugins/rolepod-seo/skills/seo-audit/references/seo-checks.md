@@ -54,7 +54,7 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | www / non-www consistency | alternate host redirects to canonical host | `host_variants.alt-host` | medium |
 | Redirect chains on nav links | ≤1 hop | `redirect_chains` | medium (≥2 hops) |
 | Duplicate titles / descriptions | none | `duplicates` | see per-page rows |
-| hreflang reciprocity | every alternate links back; `x-default` present | the `<link>` set on both pages | high when multilingual |
+| hreflang reciprocity | every alternate links back, every page lists itself, `x-default` present | `site.hreflang` (`non_reciprocal[]`, `missing_self[]`, `missing_x_default[]`; `alternates_not_fetched` in Quick mode) | high when multilingual; non-reciprocal pairs are ignored by Google |
 | HTTPS everywhere | all fetched pages https | `https` | critical |
 | HSTS | `Strict-Transport-Security` on the home response | `security.hsts` | low |
 | Near-duplicate pages | no two fetched pages ≥70 % identical body text (templated location / service pages) | `near_duplicates[]` pairs with similarity | medium; high when both are money pages |
@@ -85,6 +85,23 @@ and says so in the finding):
 | trust (about, contact, case study) | 400 | contact pages exempt |
 | category / listing | 400 | unique intro, not only a product grid |
 | location pages | 500–600 each, ≥60 % unique | ≥30 near-identical location pages → warn; ≥50 → stop and ask the owner |
+
+## Site-type emphasis
+
+`site.site_type` from the collector (saas / ecommerce / local / publisher /
+agency, with confidence and signals). When confidence is `high`, the
+signals below move **one severity step up** for that site and their
+pass / fail counts weigh more in the score; when `low`, mention the type
+in the summary and keep default weights. Never invent a type — `unknown`
+means default weights.
+
+| Site type | Signals that matter more | Typical money pages |
+|---|---|---|
+| local | NAP consistency, `LocalBusiness` subtype schema, opening hours, service area, reviews with source, click-to-call, contact page depth | service pages, contact, location pages |
+| ecommerce | `Product` + `offers` completeness, category-page intro content, canonical on filtered / paginated URLs, image alt, near-duplicate product text, `BreadcrumbList` | category and product pages |
+| publisher | author byline + `Person`, visible dates, `Article` schema, thin / duplicate archives (tag, author, pagination), question headings, internal links between posts | pillar posts, category hubs |
+| saas | pricing and features page depth, docs crawlability (not blocked, indexable), comparison tables, `Organization` + `sameAs`, `BreadcrumbList`, changelog freshness | pricing, features, integrations, docs landing |
+| agency | case studies with numbers and sources, `Person` for leadership, `sameAs`, service page depth, portfolio pages not thin | service pages, case studies |
 
 ## Structured data
 
