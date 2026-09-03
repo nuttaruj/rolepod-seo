@@ -6,6 +6,6 @@ BASE/pricing.html	money	200	0	Pricing — Northwind Plumbing Fixed Quotes	41	135
 BASE/faq.html	answer	200	0	FAQ — Northwind Plumbing	24	160	1	Frequently asked questions	6	self		en	289		n	y	n	6	0	-	n	
 BASE/blog/	blog	200	0	Plumbing Advice Blog — Northwind Plumbing	41	162	1	Plumbing advice from our engineers	0	self		en	49		n	n	n	0	0	-	n	
 BASE/contact.html	trust	200	0	Contact Northwind Plumbing — Leeds	34	152	1	Contact us	2	self		en	83		n	n	n	0	0	-	n	
+BASE/old-page.html	other	404	0																			
 BASE/blog/post-1.html	blog	200	0	What to Do When a Pipe Bursts: The First Ten Minutes	52	168	1	What to do when a pipe bursts: the first ten minutes	7	cross-domain		en	490	BlogPosting,Person,Organization	y	n	n	6	0	tdi	y	
 BASE/blog/post-2.html	blog	200	0	Boiler fault codes	18	0	1	Boiler fault codes	0	self	noindex, follow	en	82		n	n	n	0	0	-	n	
-BASE/old-page.html	other	404	0																			

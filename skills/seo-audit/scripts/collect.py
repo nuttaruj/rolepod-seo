@@ -26,6 +26,7 @@ import datetime as dt
 import json
 import os
 import re
+import ssl
 import sys
 import urllib.error
 import urllib.parse
@@ -48,10 +49,10 @@ KEY_PAGES = [
     ("about", re.compile(r"/about|/company|/team|/who-we-are|/our-story", re.I)),
     ("services", re.compile(r"/service|/product|/solution|/what-we-do|/feature", re.I)),
     ("pricing", re.compile(r"/pric|/plans|/packages", re.I)),
-    ("cases", re.compile(r"/case|/customer|/portfolio|/work|/testimonial|/review", re.I)),
+    ("cases", re.compile(r"/case-stud|/cases?\b|/customers?\b|/portfolio|/our-work|/work\b|/testimonials?\b|/reviews?\b", re.I)),
     ("blog", re.compile(r"/blog|/news|/article|/insight|/resource|/guide|/learn", re.I)),
     ("contact", re.compile(r"/contact|/get-in-touch|/book|/quote|/demo", re.I)),
-    ("faq", re.compile(r"/faq|/help|/support|/question", re.I)),
+    ("faq", re.compile(r"/faqs?\b|/help\b|/support\b|/questions?\b", re.I)),
 ]
 QUESTION_RE = re.compile(r"^(who|what|when|where|why|how|can|could|does|do|is|are|should|which|will)\b|\?\s*$", re.I)
 SKIP_TAGS = ("script", "style", "noscript", "template", "svg")
@@ -89,6 +90,43 @@ def path_of(url: str) -> str:
     return (p.path or "/") + (("?" + p.query) if p.query else "")
 
 
+_CTX: ssl.SSLContext | None = None
+_INSECURE = False
+CA_BUNDLES = (
+    "/etc/ssl/cert.pem",                       # macOS system bundle
+    "/etc/ssl/certs/ca-certificates.crt",      # Debian / Ubuntu / Alpine
+    "/etc/pki/tls/certs/ca-bundle.crt",        # RHEL / Fedora
+    "/opt/homebrew/etc/openssl@3/cert.pem",    # Homebrew (arm64)
+    "/usr/local/etc/openssl@3/cert.pem",       # Homebrew (x86_64)
+)
+
+
+def ssl_context() -> ssl.SSLContext:
+    """Default context plus every CA bundle we can find — python.org builds on
+    macOS ship without one and fail every https fetch otherwise."""
+    global _CTX
+    if _CTX is not None:
+        return _CTX
+    ctx = ssl.create_default_context()
+    try:
+        import certifi  # type: ignore
+
+        ctx.load_verify_locations(certifi.where())
+    except Exception:
+        pass
+    for path in CA_BUNDLES:
+        if os.path.exists(path):
+            try:
+                ctx.load_verify_locations(path)
+            except Exception:
+                pass
+    if _INSECURE:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    _CTX = ctx
+    return ctx
+
+
 class _Redirects(urllib.request.HTTPRedirectHandler):
     def __init__(self):
         super().__init__()
@@ -101,7 +139,7 @@ class _Redirects(urllib.request.HTTPRedirectHandler):
 
 def fetch(url: str, timeout: float, limit: int = 2_000_000) -> dict:
     rh = _Redirects()
-    opener = urllib.request.build_opener(rh)
+    opener = urllib.request.build_opener(rh, urllib.request.HTTPSHandler(context=ssl_context()))
     req = urllib.request.Request(
         url,
         headers={
@@ -514,9 +552,13 @@ def discover(base: str, home_links: list[str], sitemap_locs: list[str], mode: st
         seen.add(k)
         ordered.append(u2)
 
-    for u in home_links:
+    def depth(u: str) -> int:
+        return len([seg for seg in urllib.parse.urlsplit(u).path.split("/") if seg])
+
+    # nav / footer links first (shallowest first), then the sitemap (shallowest first)
+    for u in sorted(home_links, key=depth):
         add(u)
-    for u in sitemap_locs:
+    for u in sorted(sitemap_locs, key=depth):
         add(u)
     if mode == "full":
         return [base] + ordered[: max_pages - 1]
@@ -613,7 +655,10 @@ def main(argv=None) -> int:
     ap.add_argument("--timeout", type=float, default=15.0)
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--fixed-time", help="ISO timestamp to stamp instead of now (tests)")
+    ap.add_argument("--insecure", action="store_true", help="skip TLS verification (recorded in site.json; last resort)")
     a = ap.parse_args(argv)
+    global _INSECURE
+    _INSECURE = a.insecure
 
     base = a.base_url if re.match(r"^https?://", a.base_url, re.I) else "https://" + a.base_url
     if not urllib.parse.urlsplit(base).path:
@@ -712,6 +757,7 @@ def main(argv=None) -> int:
         "final_home_url": home["final_url"],
         "home_status": home["status"],
         "https": home["final_url"].startswith("https://"),
+        "tls_verify": not a.insecure,
         "robots": robots_info,
         "sitemap": {
             "declared_in_robots": bool(robot_sitemaps),

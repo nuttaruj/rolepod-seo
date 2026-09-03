@@ -1,3 +1,14 @@
 # Clean-room guard (brief 02 / D4). One distinctive phrase per line, matched
 # case-insensitively as a literal substring across skills/, README.md, docs/.
 # Populated from the reference repo's own wording — never from ours.
+Do not fetch anything yet
+Stop and ask this question first, every single time
+until you've actually looked
+unless you've confirmed it doesn't exist
+genuinely add no signal
+paginated archive pages beyond page 2
+if you found it on another page during your crawl
+Do not ask the user if they want this
+premium agency deliverable
+Audit the whole site, not just the starting URL
+earn its download
