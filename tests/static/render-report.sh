@@ -60,6 +60,10 @@ check("<th>Verify</th>" in doc and "canonical_ok = self" in doc, "verify column 
 check("Watch: Search Console" in doc, "leading indicator lands in the Ongoing phase")
 check('1 fail</span>' in doc and 'class="chip fail">404</span>' in doc, "per-page finding counts + status chips in the pages table")
 check(doc.count("</b> fail · <b>") == 3, "fail/warn/pass counts on the three cards")
+check("By group: <strong>technical</strong> — 2 fail" in doc, "SEO findings broken down by signal group (canonical + h1 → technical)")
+check("<strong>schema</strong> — 1 fail" in doc and "<strong>trust</strong> — 1 pass" in doc, "AEO faq-schema → schema, GEO ai-bot-policy → trust")
+for sig, want in (("canonical", "technical"), ("faq-schema", "schema"), ("answer-block", "answer"), ("ai-bot-policy", "trust"), ("content-depth", "content"), ("click-depth", "technical"), ("mixed-content", "technical"), ("organization-schema", "schema"), ("xyz", "other")):
+    check(r.signal_group(sig) == want, f"signal_group({sig!r}) = {r.signal_group(sig)} != {want}")
 check('<section id="since"' in prevdoc and "<h3>Fixed</h3>" in prevdoc and "<h3>New</h3>" in prevdoc, "since-last-audit section with --previous")
 check('<section id="since"' not in doc, "no since section without --previous")
 for needle in ("<script", "javascript:", "download=", "blob:", "jspdf"):

@@ -6,6 +6,16 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-03
+
+### Added
+
+- HTML report: each dimension is broken down **by signal group** (schema ·
+  technical · content · trust · answer · other) on the score cards and
+  under each findings header, so the reader sees where a 6/10 comes from
+  without a fourth dimension. Groups are matched by keyword on the free-text
+  `signal`, `signal_group()` is table-tested.
+
 ## [0.4.0] — 2026-09-03
 
 ### Changed — facts

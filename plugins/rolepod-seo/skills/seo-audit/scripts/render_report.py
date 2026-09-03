@@ -43,6 +43,44 @@ PHASES = [
     ("Month 2 — content and trust", "medium", "Copy, briefs, E-E-A-T, schema breadth."),
     ("Ongoing — decide, measure, re-audit", "ongoing", "Owner decisions, what needs a tool to prove, leading indicators."),
 ]
+# signal name → group, first match wins; the model writes free-text signals, so match by keyword
+SIGNAL_GROUPS = [
+    ("schema", r"schema|json-?ld|structured|breadcrumb|organization|local-?business|faqpage|speakable|sameas"),
+    ("technical", r"title|description|h1|heading|canonical|robots|noindex|sitemap|redirect|https|hsts|mixed|viewport|lang|charset|url|favicon|og\b|open-?graph|twitter|hreflang|inlink|(?<!content-)depth|orphan|link|crawl|index|security|header|status|404|5xx"),
+    ("content", r"content|word|thin|duplicate|topic|fresh|date|scann|readab|image|alt|paragraph"),
+    ("trust", r"author|about|contact|nap|trust|proof|testimonial|entity|citation|fact|claim|source|bot|llms|render|agent|e-?e-?a-?t|brand"),
+    ("answer", r"answer|question|faq|definition|step|how-?to|table|compar|voice|hours|service-?area|paa|toc|jump"),
+]
+
+
+def signal_group(signal: str) -> str:
+    s_ = (signal or "").lower()
+    for group, rx in SIGNAL_GROUPS:
+        if re.search(rx, s_):
+            return group
+    return "other"
+
+
+def group_counts(findings: list[dict], dim: str) -> list[tuple[str, dict[str, int]]]:
+    """[(group, {fail, warn, pass}), …] for one dimension, in SIGNAL_GROUPS order, empty groups dropped."""
+    acc: dict[str, dict[str, int]] = {}
+    for f in findings:
+        if f.get("dimension") != dim or f.get("status") not in ("fail", "warn", "pass"):
+            continue
+        g = signal_group(f.get("signal", ""))
+        acc.setdefault(g, {"fail": 0, "warn": 0, "pass": 0})[f["status"]] += 1
+    order = [g for g, _ in SIGNAL_GROUPS] + ["other"]
+    return [(g, acc[g]) for g in order if g in acc]
+
+
+def group_line(findings: list[dict], dim: str) -> str:
+    parts = []
+    for g, c in group_counts(findings, dim):
+        bits = [f"{c[k]} {k}" for k in ("fail", "warn", "pass") if c[k]]
+        parts.append(f"<strong>{esc(g)}</strong> — {', '.join(bits)}")
+    return " · ".join(parts)
+
+
 SITE_TYPE_LABEL = {"saas": "SaaS / software", "ecommerce": "e-commerce", "local": "local service", "publisher": "publisher / blog", "agency": "agency / services", "unknown": "not detected"}
 STATUS_LABEL = {"fail": "Fail", "warn": "Warn", "pass": "Pass", "not-assessed": "Not assessed"}
 DIM_NAME = {"seo": "SEO", "geo": "GEO", "aeo": "AEO"}
@@ -138,6 +176,7 @@ dl.gloss dd{margin:0 0 4px}
 .box ul{margin:0;padding-left:18px}
 .counts{font-size:12px;opacity:.85;margin-top:8px}
 .counts b{font-weight:600}
+.counts.groups{opacity:.75;font-size:11px;line-height:1.5}
 .delta{font-size:13px;color:var(--muted)}
 .delta .up{color:var(--good);font-weight:600}.delta .down{color:var(--bad);font-weight:600}
 .phase{margin:14px 0 0}
@@ -234,6 +273,7 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
                    f'<div class="score">{score_txt}</div><span class="status">{esc(label)}</span>'
                    f'<div class="sub">band: {esc(s.get("band", "—"))}</div>'
                    f'<div class="counts"><b>{c["fail"]}</b> fail · <b>{c["warn"]}</b> warn · <b>{c["pass"]}</b> pass</div>'
+                   + (f'<div class="counts groups">{group_line(findings, d)}</div>' if group_counts(findings, d) else "")
                    + (f'<ul class="drivers">{drivers}</ul>' if drivers else "") + "</div>")
     out.append("</div></header>")
 
@@ -310,6 +350,8 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
         rows = [f for f in findings if f.get("dimension") == d and f.get("status") != "not-assessed"]
         c = status_counts(findings, d)
         out.append(f'<section id="{d}"><h2>{DIM_NAME[d]} findings <span class="muted">— {DIM_SUB[d]} · {c["fail"]} fail · {c["warn"]} warn · {c["pass"]} pass</span></h2>')
+        if group_counts(findings, d):
+            out.append(f'<p class="muted">By group: {group_line(findings, d)}</p>')
         if not rows:
             out.append('<p class="muted">No findings recorded for this dimension.</p></section>')
             continue
