@@ -15,6 +15,7 @@ every field below is present there.
 | `schema_version` | int | `1` |
 | `generated_at` | string | ISO 8601 UTC |
 | `site` | object | `base_url`, `host`, `mode` (`quick` \| `full`) |
+| `summary` | string | optional — the executive summary (3–6 sentences); the HTML renderer generates one when absent |
 | `collection` | object | what was collected and how (below) |
 | `scores` | object | `seo`, `geo`, `aeo` (below) |
 | `findings` | array | one object per finding (below) |
@@ -39,6 +40,7 @@ every field below is present there.
 | `scores.seo.score` | int 1–10 | absent when `band` is `not-assessed` |
 | `scores.seo.band` | enum | `critical` (1–3) \| `below-baseline` (4–5) \| `solid` (6–7) \| `strong` (8–9) \| `model` (10) \| `not-assessed` |
 | `scores.seo.drivers` | array of string | the top findings that drove the score, each naming a page |
+| `scores.seo.status_label` | enum | optional, derived from `score`: `On Track` (8–10) \| `Needs Work` (5–7) \| `Critical` (1–4) \| `Not assessed`; the HTML renderer computes it when absent |
 
 `geo` and `aeo` carry the same three fields.
 
@@ -70,6 +72,13 @@ title, description, headings, canonical, robots, word count, schema types,
 author / FAQ signals …) and `site` (robots verdict per bot, sitemap facts,
 duplicates, redirect chains, host variants). It is an input to the audit;
 the sidecar above is the output. Both are additive.
+
+## Rendered forms (v0.3.0)
+
+`skills/seo-audit/scripts/render_report.py <sidecar>` writes the
+self-contained HTML report (`--artifact` for the Claude Code Artifact
+fragment). It reads this schema and nothing else, so a consumer that
+emits a valid sidecar gets the same report.
 
 ## Sample
 

@@ -33,12 +33,15 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 
 ## What you get from an audit
 
-| Deliverable | Where |
-|---|---|
-| Chat summary | one table: pages · date · three scores with band · top 3 priorities · biggest strength |
-| Markdown report | `reports/seo-audit-<host>-<date>.md` — findings tables with evidence, priority matrix, what's working, glossary |
-| JSON sidecar | `reports/seo-audit-<host>-<date>.json` — stable, additive schema ([docs/report-schema.md](docs/report-schema.md)) |
-| Artifact | on Claude Code, the report as a private page |
+| Tier | Deliverable | What it is |
+|---|---|---|
+| Chat | summary + priority matrix | one table (pages · date · three scores with band · top 3 priorities · biggest strength) and the matrix with colored priority dots (🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win) |
+| Files | markdown report + JSON sidecar | `reports/seo-audit-<host>-<date>.md` (findings tables with evidence, priority matrix, what's working, glossary) and `.json` with a stable, additive schema ([docs/report-schema.md](docs/report-schema.md)) that the other skills and outside tools consume |
+| Visual | HTML report | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: navy cover with three score cards colored by band, findings tables with colored status cells, priority matrix with colored chips, decisions, what's working, not assessed, glossary. Self-contained, no external assets, light and dark |
+| Claude Code | Artifact | the same HTML published as a private page; share it from the page if you want |
+
+No docx or PDF tooling: the owner chose HTML + Artifact as the visual
+deliverable ([docs/decisions.md](docs/decisions.md)).
 
 Every finding quotes the page and the tag. "Missing" is claimed only after
 every fetched page was checked. Anything the plain fetch cannot see (Core
@@ -114,10 +117,11 @@ would have added as "not assessed (needs …)".
 ## Roadmap
 
 - **0.1.0** — `/seo-audit`.
-- **0.2.0** — `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief` (this release).
-- **0.3.x** — cross-page checks hardened (redirect chains, hreflang
-  reciprocity), optional docx export behind an explicit flag when the
-  runtime has the dependency.
+- **0.2.0** — `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`.
+- **0.3.0** — visual tier: HTML report rendered from the sidecar, Artifact
+  on Claude Code, colored chat priority matrix (this release).
+- **0.4.x** — cross-page checks hardened (redirect chains, hreflang
+  reciprocity).
 - **Phase 2** — connectors as a small MCP server in this repo: Google
   Search Console (read-only), keyword / SERP data, rank and AI-visibility
   tracking, log-file bot analysis. Each only when a real need is stated.
@@ -129,6 +133,7 @@ factories.
 
 ```bash
 make test          # test-static + test-fixture (bash + python3, no Node)
+python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out /tmp/report.html   # see the HTML tier
 make render        # copy skills/ + manifests into plugins/rolepod-seo/
 make version-bump VERSION=0.2.0
 make serve-fixture # tests/fixtures/site-a on :8765 for a manual audit run

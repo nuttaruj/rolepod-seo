@@ -15,8 +15,10 @@ for dir in skills/*/; do
   lines=$(wc -l <"$f" | tr -d ' ')
   [ "$lines" -le 240 ] || { echo "  ✗ $name: SKILL.md is $lines lines (> 240)"; fail=1; }
   find "$dir" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-  count=$(find "$dir" -type f ! -name SKILL.md ! -name .DS_Store ! -name '*.pyc' | wc -l | tr -d ' ')
-  [ "$count" -le 5 ] || { echo "  ✗ $name: $count supporting files (> 5)"; fail=1; }
+  count=$(find "$dir" -type f ! -name SKILL.md ! -name .DS_Store ! -name '*.pyc' ! -path '*/scripts/*' | wc -l | tr -d ' ')
+  [ "$count" -le 5 ] || { echo "  ✗ $name: $count supporting files (> 5, scripts excluded)"; fail=1; }
+  scripts=0; [ -d "$dir/scripts" ] && scripts=$(find "$dir/scripts" -type f ! -name '*.pyc' | wc -l | tr -d ' ')
+  [ "$scripts" -le 3 ] || { echo "  ✗ $name: $scripts scripts (> 3)"; fail=1; }
   for p in $(grep -oE '(^|[^A-Za-z0-9/-])(references|examples|templates|scripts)/[A-Za-z0-9_.-]+' "$f" | sed -E 's/^[^a-z]*//' | sort -u); do
     [ -e "$dir/$p" ] || { echo "  ✗ $name: pointer $p does not exist"; fail=1; }
   done
@@ -40,5 +42,5 @@ while IFS= read -r phrase; do
     echo "  ✗ banned phrase present: \"$phrase\""; fail=1; banned=$((banned+1))
   fi
 done < tests/static/banned-phrases.txt
-[ $fail -eq 0 ] && echo "  ✓ $n skill(s): frontmatter, ≤240 lines, ≤5 files, pointers resolve, effort ≤ xhigh, clean-room guard"
+[ $fail -eq 0 ] && echo "  ✓ $n skill(s): frontmatter, ≤240 lines, ≤5 supporting files + ≤3 scripts, pointers resolve, effort ≤ xhigh, clean-room guard"
 exit $fail

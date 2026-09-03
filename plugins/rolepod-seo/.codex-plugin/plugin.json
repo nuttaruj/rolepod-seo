@@ -1,6 +1,6 @@
 {
   "name": "rolepod-seo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "SEO + GEO + AEO site audit for AI coding agents — Quick or Full audit of a site across classic search (SEO), generative engines (GEO) and answer engines (AEO), scored 1–10 per dimension with quoted evidence, ending in a prioritized fix plan that hands off to rolepod-uiproof (rendered DOM, Core Web Vitals), rolepod-wplab (WordPress writes) and the rolepod parent roles. Four skills (/seo-audit, /seo-fix-plan, /seo-schema, /seo-page-brief). Skills only — no MCP server, no hooks.",
   "author": {
     "name": "nuttaruj",
@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Rolepod SEO",
     "shortDescription": "SEO + GEO + AEO site audit with scores, evidence and a fix plan — for AI coding agents.",
-    "longDescription": "rolepod-seo ships skills, not tools. Four skills: /seo-audit (Quick or Full audit, 1–10 scores with quoted evidence, markdown report + JSON sidecar), /seo-fix-plan (findings → hand-offs per owner in dependency order, exact payloads for rolepod-wplab / frontend-developer / content-strategist), /seo-schema (JSON-LD per page type from facts on the page, required-property validation, placement hand-off), /seo-page-brief (intent, 40–60-word answer block, question headings, entities, schema, internal links — for content-strategist). A stdlib-only collector fetches HTML, robots.txt and sitemaps into one table per page; a stdlib validator checks JSON-LD. When rolepod-uiproof is installed the audit adds rendered-DOM and Core Web Vitals checks; WordPress fixes hand off to rolepod-wplab, code to frontend-developer, copy to content-strategist. Zero per-session tool-schema cost.",
+    "longDescription": "rolepod-seo ships skills, not tools. Four skills: /seo-audit (Quick or Full audit, 1–10 scores with quoted evidence, markdown report + JSON sidecar + self-contained HTML report with score cards and a colored priority matrix), /seo-fix-plan (findings → hand-offs per owner in dependency order, exact payloads for rolepod-wplab / frontend-developer / content-strategist), /seo-schema (JSON-LD per page type from facts on the page, required-property validation, placement hand-off), /seo-page-brief (intent, 40–60-word answer block, question headings, entities, schema, internal links — for content-strategist). A stdlib-only collector fetches HTML, robots.txt and sitemaps into one table per page; a stdlib validator checks JSON-LD. When rolepod-uiproof is installed the audit adds rendered-DOM and Core Web Vitals checks; WordPress fixes hand off to rolepod-wplab, code to frontend-developer, copy to content-strategist. Zero per-session tool-schema cost.",
     "developerName": "nuttaruj",
     "category": "Productivity",
     "capabilities": [

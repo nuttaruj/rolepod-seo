@@ -43,10 +43,13 @@ ceiling `xhigh`): this skill adds procedure only.
    `references/report.md`.
 3. **JSON sidecar** — `reports/seo-audit-<host>-<YYYY-MM-DD>.json`, the
    stable shape in `references/report.md` § JSON. Other tools consume it.
-4. **Artifact** — when the harness has an Artifact tool, publish the report
-   as a private page and give the link. Skip silently elsewhere.
-5. docx / PDF — only on explicit request and only when the runtime has the
-   dependencies. The audit never depends on them.
+4. **HTML report** — `reports/seo-audit-<host>-<YYYY-MM-DD>.html` rendered
+   from the sidecar by `scripts/render_report.py` (stdlib, self-contained:
+   navy cover with three colored score cards, findings tables, colored
+   priority matrix). This is the visual deliverable on every CLI.
+5. **Artifact** — on Claude Code, publish the `--artifact` form of that
+   HTML as a private page and give the link. Skip silently elsewhere.
+   No docx / PDF export (owner decision, see docs/decisions.md).
 
 ## Process
 
@@ -140,12 +143,22 @@ dimension with no data is "not assessed (needs X)", never a number.
 
 ### 7. Report
 
-Write the markdown report and the JSON sidecar from `references/report.md`,
-publish the Artifact when available, then print the chat summary table.
-Close with the priority matrix (Priority · Issue · Dimension · Effort ·
-Impact · Owner · Exact change). "Exact change" carries the field and value
-or the snippet — that is what lets `/seo-fix-plan`, rolepod-wplab,
-frontend-developer or content-strategist execute without re-reading the audit.
+Write the JSON sidecar first (it drives everything else), then the
+markdown report, both from `references/report.md`. Render the HTML:
+
+```bash
+python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --collect <collect.json>
+python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --artifact   # Claude Code only
+```
+
+On Claude Code publish the `--artifact` file with the Artifact tool
+(`<title>` is the host; no external assets; light / dark tokens are built
+in). Then print the chat summary table and the chat priority matrix with
+colored dots in the Priority column (🔴 Critical · 🟠 High · 🟡 Medium ·
+🟢 Quick win), columns Priority · Issue · Dim · Effort · Impact · Owner ·
+Exact change. "Exact change" carries the field and value or the snippet —
+that is what lets `/seo-fix-plan`, rolepod-wplab, frontend-developer or
+content-strategist execute without re-reading the audit.
 
 ## Evidence rules
 

@@ -1,7 +1,8 @@
-# Report shapes — chat summary, markdown report, JSON sidecar
+# Report shapes — chat summary + matrix, markdown report, JSON sidecar, HTML
 
-Single source for the three deliverables. Do not restate these shapes in
-the skill body; fill them.
+Single source for the deliverables. Do not restate these shapes in the
+skill body; fill them. Write the JSON first: the HTML report and the
+Artifact are rendered from it.
 
 ## 1. Chat summary (always)
 
@@ -15,6 +16,21 @@ the skill body; fill them.
 | Biggest strength | <what, with the page> |
 | Report | reports/seo-audit-<host>-<date>.md · .json · <artifact link or "—"> |
 ```
+
+### Chat priority matrix (always, after the summary)
+
+```text
+| Priority | Issue | Dim | Effort | Impact | Owner | Exact change |
+|---|---|---|---|---|---|---|
+| 🔴 Critical | <signal> · <path> | SEO | S | H | wplab | <field = value, or snippet> |
+| 🟠 High | … | AEO | S | H | frontend-developer | … |
+| 🟡 Medium | … | GEO | M | M | content-strategist | … |
+| 🟢 Quick win | … | SEO | S | M | frontend-developer | … |
+```
+
+Dots: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win. Sort: Critical, High,
+Quick win, Medium; inside a band, higher severity first. Cap at ~10 rows in
+chat; the full matrix lives in the report.
 
 ## 2. Markdown report — `reports/seo-audit-<host>-<date>.md`
 
@@ -76,6 +92,7 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
   "schema_version": 1,
   "generated_at": "2026-09-03T10:00:00Z",
   "site": { "base_url": "https://example.com/", "host": "example.com", "mode": "quick" },
+  "summary": "Three to six sentences: overall state, the first fix, the biggest strength.",
   "collection": {
     "tiers": { "a": true, "b": false, "c": false },
     "tools": ["collect.py"],
@@ -84,7 +101,7 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
     "collect_path": ".rolepod-seo/collect-example.com-20260903/"
   },
   "scores": {
-    "seo": { "score": 6, "band": "solid", "drivers": ["…", "…", "…"] },
+    "seo": { "score": 6, "band": "solid", "status_label": "Needs Work", "drivers": ["…", "…", "…"] },
     "geo": { "score": 4, "band": "below-baseline", "drivers": ["…"] },
     "aeo": { "score": 5, "band": "below-baseline", "drivers": ["…"] }
   },
@@ -122,3 +139,19 @@ not-assessed. `severity`: critical | high | medium | low | info.
 frontend-developer | content-strategist | human. `effort`: S | M | L.
 `impact`: H | M | L. `priority`: critical | high | medium | quick-win.
 `id` is stable across runs of the same site: `<dimension>-<signal>-<slug>`.
+`summary` (optional) is the executive summary; `status_label` (optional,
+derived from the score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical) is
+what the HTML cover shows — the renderer computes it when absent.
+
+## 4. HTML report — `reports/seo-audit-<host>-<date>.html`
+
+Rendered from the sidecar by `scripts/render_report.py`; never hand-written.
+Sections in order: cover (host, mode, date, pages, tiers; three score cards
+colored by `status_label`), executive summary (`summary`, or generated
+from scores + first fix), pages audited (+ title / words / schema with
+`--collect`), SEO / GEO / AEO findings tables (Signal · Evidence · Fix ·
+Page · Status chip), priority matrix (priority chip · Issue · Dim · Effort ·
+Impact · Owner · Exact change), decisions for the owner (`info` + `human`
+findings), what's working, not assessed, glossary (Full mode). Inline CSS
+only, light / dark tokens, a small `@media print` block. `--artifact`
+emits the fragment the Claude Code Artifact tool expects, title = host.

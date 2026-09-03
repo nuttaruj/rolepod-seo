@@ -6,6 +6,42 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-03
+
+### Added
+
+- **HTML report** — `skills/seo-audit/scripts/render_report.py` (stdlib)
+  renders the JSON sidecar into a self-contained page: navy cover with the
+  host, mode, date, pages and tiers plus three score cards colored by band
+  (8–10 On Track green, 5–7 Needs Work amber, 1–4 Critical red), executive
+  summary, pages audited (title / words / schema with `--collect`), SEO /
+  GEO / AEO findings tables with colored status cells, priority matrix with
+  colored chips (Critical / High / Medium / Quick win) and Dim · Effort ·
+  Impact · Owner · Exact change, decisions for the owner, what's working,
+  not assessed, glossary in Full mode. Inline CSS only, no external assets,
+  light / dark tokens, a small `@media print` block.
+- **Artifact on Claude Code** — `render_report.py --artifact` emits the
+  fragment the Artifact tool expects (title = host); `/seo-audit` step 7
+  now publishes the HTML, not the markdown.
+- **Chat priority matrix** with colored dots in the Priority column
+  (🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win), shape in
+  `references/report.md`.
+- Sidecar schema (additive): optional `summary` (executive summary) and
+  `scores.<dim>.status_label` (derived from the score; the renderer
+  computes it when absent). `docs/report-schema.md` updated.
+- Tests: `tests/static/render-report.sh` — document and artifact forms,
+  every section present, three cards with the expected classes, print CSS,
+  light / dark tokens in all three states, no external assets, no scripts,
+  chips rendered, score → status mapping table-tested.
+- Skill contract: supporting files (≤5) and scripts (≤3) are counted
+  separately — scripts never enter the context window.
+
+### Declined (owner, 2026-09-03)
+
+- docx / PDF export of any kind. HTML + Artifact is the visual
+  deliverable on every CLI; the print block is a zero-cost nicety, not a
+  documented deliverable.
+
 ## [0.2.0] — 2026-09-03
 
 ### Added

@@ -8,8 +8,11 @@
 | Cursor | team marketplace (enterprise) or copy `skills/` into the workspace | workspace skills | numbered fallback | `collect.py` via shell | if `.cursor/mcp.json` has uiproof | — | no |
 | opencode | copy `skills/` into the project | project skills | numbered fallback | `collect.py` via shell | — | — | no |
 
-Constant across CLIs: the collector (`python3`, stdlib only), the markdown
-report, the JSON sidecar, the evidence rules, the effort ceiling (`xhigh`).
+Constant across CLIs: the collector and the HTML renderer (`python3`,
+stdlib only), the markdown report, the JSON sidecar, the self-contained
+HTML report, the evidence rules, the effort ceiling (`xhigh`). The Artifact
+column is the only Claude-Code-only deliverable; every other CLI opens the
+same HTML file in a browser.
 
 Phase 1 ships **no MCP server and no hooks** on purpose:
 
