@@ -1,0 +1,95 @@
+# SEO checks — classic search
+
+Read when analyzing the SEO dimension. Each row: what to check · threshold ·
+what to quote as evidence · default severity. Severity moves one step up on
+home / money pages and one step down on utility pages. `pages.tsv` and
+`site.json` from the collector carry most of the raw values.
+
+## Per page — technical on-page
+
+| Check | Threshold | Evidence to quote | Severity |
+|---|---|---|---|
+| `<title>` present | non-empty | the title text and its length | critical |
+| Title length | ~50–60 chars; >70 truncates, <25 wastes | title + `title_len` | medium |
+| Title unique across site | no two pages share it | both paths + the shared text | high |
+| Primary topic early in title | main phrase in first ~40 chars | the title | low |
+| Meta description present | non-empty | the text + length | high |
+| Description length | ~150–160; >170 truncates, <70 thin | length | low |
+| Description unique | no two pages share it | both paths | medium |
+| Description states the answer | says what the page delivers, not a slogan | the text | low |
+| H1 | exactly one | `h1_count` + text(s) | high (0 or ≥2) |
+| Heading hierarchy | H2 under H1, H3 under H2; no jump for styling | the heading list | low |
+| URL readable | hyphenated words, no session params, no `?id=` | the URL | medium |
+| Trailing-slash consistency | one convention site-wide | two differing URLs | low |
+| Canonical present | `<link rel=canonical>` on every indexable page | `canonical_ok` | high |
+| Canonical self or intentional | equals final URL after redirects; same host | canonical vs final URL | high (`other` / `cross-domain`) |
+| No accidental noindex | no `noindex` in meta robots or `X-Robots-Tag` on money pages | the robots value | critical on money pages |
+| Viewport meta | present | `viewport` | medium |
+| `html lang` | present, matches content language | the value | medium |
+| Charset | declared | `charset` | low |
+| Image alt text | content images have alt | `images_no_alt` / `images` | medium |
+| Hero image weight | flag obviously large hero (>500 KB) when size is visible | the file name + size | low (needs uiproof for real numbers) |
+| Internal links | descriptive anchors; key pages ≤3 clicks from home | anchor text examples; `not_linked_from_home` | medium |
+| Orphan key pages | every money page linked from nav / home | path | high |
+| Open Graph | og:title, og:description, og:image, og:type | `og` column (t/d/i) | low; medium on share-worthy pages |
+| Twitter Card | `twitter:card` present | value | low |
+| Mixed content | no `http://` assets on an https page | `mixed_content` count | high |
+| Favicon | `<link rel=icon>` | `favicon` | low |
+
+## Site level — cross-page (from `site.json`)
+
+| Check | Threshold | Evidence | Severity |
+|---|---|---|---|
+| robots.txt reachable | 200 | status | high if missing on a large site; low on small |
+| robots.txt does not block CSS / JS | `blocks_assets` false | the Disallow line | high |
+| robots.txt does not block key sections | no Disallow on money paths | the Disallow line | critical |
+| Sitemap declared in robots.txt | `Sitemap:` line | `declared_in_robots` | low |
+| Sitemap exists and parses | 200, valid XML | `files` + `errors` | high |
+| Sitemap URLs return 200 | none 3xx / 4xx / 5xx | `listed_but_not_200` | medium |
+| Sitemap excludes noindex URLs | none | `listed_but_noindex` | medium |
+| Sitemap lastmod sane | present, not all identical, not in the future | `with_lastmod` / count | low |
+| http → https redirect | `host_variants.http` ends on https, 1 hop | final URL + hops | high |
+| www / non-www consistency | alternate host redirects to canonical host | `host_variants.alt-host` | medium |
+| Redirect chains on nav links | ≤1 hop | `redirect_chains` | medium (≥2 hops) |
+| Duplicate titles / descriptions | none | `duplicates` | see per-page rows |
+| hreflang reciprocity | every alternate links back; `x-default` present | the `<link>` set on both pages | high when multilingual |
+| HTTPS everywhere | all fetched pages https | `https` | critical |
+
+## Per page — content quality
+
+| Check | Threshold | Evidence | Severity |
+|---|---|---|---|
+| Word count vs role | money / pillar ≥ 1500 desirable; any ranking page ≥ 300; utility exempt | `word_count` + role | medium (thin) |
+| Topic focus | the primary query answered in the first screen | quote the first paragraph | medium |
+| Freshness | visible date on time-sensitive content | `date_visible` | low; medium on news / guides |
+| Scannability | short paragraphs, lists, tables where the reader compares | `lists` / `tables` | low |
+| Thin duplicates | near-identical pages (tag / archive) | two paths | medium |
+
+Word count in the collector is all visible text (nav and footer included);
+subtract roughly 80–150 for chrome on a typical template before judging thin.
+
+## Structured data
+
+| Check | Threshold | Evidence | Severity |
+|---|---|---|---|
+| JSON-LD present | ≥1 block on home and money pages | `schema_types` | medium |
+| JSON-LD parses | `jsonld_invalid` = 0 | the block or the parse error | high |
+| Types match page role | see table below | `schema_types` vs role | medium |
+| Required properties present | per type, below | the missing property name | medium (rich result ineligible) |
+| Rendered-only schema | a block present in uiproof `audit_seo` but absent in Tier A | both results | GEO finding (see geo-checks) |
+
+Required properties for rich-result eligibility (the compact set; the full
+list with recommended fields ships with `/seo-schema` in
+`seo-schema/references/schema-minimums.md`):
+
+| Type | Where | Required |
+|---|---|---|
+| `Organization` | home | `name`, `url`, `logo`; recommend `sameAs`, `contactPoint` |
+| `LocalBusiness` | home / contact | `name`, `address` (PostalAddress), `telephone`; recommend `openingHoursSpecification`, `geo`, `priceRange` |
+| `WebSite` | home | `name`, `url`; `potentialAction` (SearchAction) only if the site has search |
+| `BreadcrumbList` | inner pages | `itemListElement[]` with `position`, `name`, `item` |
+| `Article` / `BlogPosting` | posts | `headline`, `datePublished`, `author` (Person with `name`), `image`; recommend `dateModified`, `publisher` |
+| `Product` | product pages | `name`, `image`, plus `offers` (`price`, `priceCurrency`, `availability`) or `aggregateRating` or `review` |
+| `FAQPage` | visible FAQ | `mainEntity[]` of `Question` with `name` + `acceptedAnswer.text`; must mirror visible text |
+| `HowTo` | procedural | `name`, `step[]` (HowToStep with `text`) |
+| `Person` | author / about | `name`; recommend `url`, `jobTitle`, `sameAs`, `worksFor` |

@@ -1,0 +1,88 @@
+{
+  "schema": "rolepod-seo/report",
+  "schema_version": 1,
+  "generated_at": "2026-09-03T10:00:00Z",
+  "site": { "base_url": "http://127.0.0.1:8765/", "host": "127.0.0.1:8765", "mode": "full" },
+  "collection": {
+    "tiers": { "a": true, "b": false, "c": false },
+    "tools": ["collect.py"],
+    "pages_selected": 10,
+    "pages_fetched": 9,
+    "collect_path": ".rolepod-seo/collect-127.0.0.1-8765-20260903/"
+  },
+  "scores": {
+    "seo": { "score": 6, "band": "solid", "drivers": [
+      "canonical on /blog/post-1.html points to example.com (cross-domain)",
+      "/services.html has two <h1> and shares its meta description with /pricing.html",
+      "sitemap lists /old-page.html (404) and /blog/post-2.html (noindex)"
+    ] },
+    "geo": { "score": 5, "band": "below-baseline", "drivers": [
+      "About page names leadership and accreditations but ships no Person / Organization link",
+      "GPTBot and CCBot blocked in robots.txt — owner decision, caps citation reach",
+      "Blog post has a byline + Person schema; no author page exists"
+    ] },
+    "aeo": { "score": 5, "band": "below-baseline", "drivers": [
+      "/faq.html has six question H2s with 40–60-word answers and no FAQPage schema",
+      "/contact.html shows NAP and hours without LocalBusiness schema",
+      "Pricing has a comparison table; no direct-answer sentence under the H1"
+    ] }
+  },
+  "findings": [
+    {
+      "id": "seo-canonical-cross-domain-blog-post-1",
+      "dimension": "seo",
+      "signal": "canonical",
+      "page": "http://127.0.0.1:8765/blog/post-1.html",
+      "severity": "high",
+      "status": "fail",
+      "evidence": "<link rel=\"canonical\" href=\"https://example.com/blog/post-1\">",
+      "fix": "Set <link rel=\"canonical\"> to http://127.0.0.1:8765/blog/post-1.html",
+      "owner": "frontend-developer",
+      "effort": "S",
+      "impact": "H",
+      "priority": "critical"
+    },
+    {
+      "id": "aeo-faq-schema-faq",
+      "dimension": "aeo",
+      "signal": "faq-schema",
+      "page": "http://127.0.0.1:8765/faq.html",
+      "severity": "high",
+      "status": "fail",
+      "evidence": "H2 \"How quickly can a plumber reach me in Leeds?\" + 5 more question headings; schema_types = []",
+      "fix": "Add FAQPage JSON-LD with the six visible Q/A pairs verbatim",
+      "owner": "frontend-developer",
+      "effort": "S",
+      "impact": "H",
+      "priority": "quick-win"
+    },
+    {
+      "id": "geo-ai-bot-policy-site",
+      "dimension": "geo",
+      "signal": "ai-bot-policy",
+      "page": "site",
+      "severity": "info",
+      "status": "pass",
+      "evidence": "robots.txt: User-agent: GPTBot / Disallow: /; User-agent: CCBot / Disallow: /; ClaudeBot, PerplexityBot fall to * (partial)",
+      "fix": "Decision: keep (protects content, no ChatGPT-search citations) or open GPTBot (citations possible, training exposure). Owner chooses.",
+      "owner": "human",
+      "effort": "S",
+      "impact": "M",
+      "priority": "medium"
+    }
+  ],
+  "strengths": [
+    { "signal": "title", "page": "http://127.0.0.1:8765/", "evidence": "<title>Northwind Plumbing — Emergency Plumbers in Leeds</title> (48 chars, topic first)" },
+    { "signal": "factual-density", "page": "http://127.0.0.1:8765/", "evidence": "\"average response time across 2025 was 94 minutes\", \"3,412 jobs\", \"96% … single visit\"" }
+  ],
+  "not_assessed": [
+    { "signal": "cwv", "needs": "rolepod-uiproof measure_cwv", "installed": false },
+    { "signal": "rendered-dom", "needs": "rolepod-uiproof audit_seo", "installed": false },
+    { "signal": "queries-ctr-position", "needs": "Google Search Console connector (Phase 2)", "installed": false }
+  ],
+  "pages": [
+    { "url": "http://127.0.0.1:8765/", "role": "home", "status": 200, "in_sitemap": true },
+    { "url": "http://127.0.0.1:8765/faq.html", "role": "answer", "status": 200, "in_sitemap": true },
+    { "url": "http://127.0.0.1:8765/old-page.html", "role": "other", "status": 404, "in_sitemap": true }
+  ]
+}

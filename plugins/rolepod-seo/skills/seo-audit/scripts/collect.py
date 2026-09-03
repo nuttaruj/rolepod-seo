@@ -1,0 +1,756 @@
+#!/usr/bin/env python3
+"""rolepod-seo — Tier A collector (plain fetch, Python stdlib only).
+
+Fetches what an audit can see without a browser — HTML, robots.txt,
+sitemap(s), llms.txt — and writes one row per page plus site-level facts,
+so the auditing model reads a table instead of raw HTML.
+
+Usage:
+  collect.py BASE_URL [--mode quick|full] [--urls FILE] [--out DIR]
+             [--max-pages N] [--timeout SEC] [--quiet]
+
+Outputs (in --out, default .rolepod-seo/collect-<host>-<YYYYMMDD>/):
+  pages.tsv     per-page facts, tab-separated (machine-readable)
+  pages.md      the same rows as a markdown table (paste into the report)
+  site.json     robots / sitemap / duplicates / redirects / host variants
+  collect.json  pages + site in one document (feeds the JSON sidecar)
+
+No JavaScript is executed. Rendered-DOM checks (JS-injected meta, JSON-LD
+added at runtime, Core Web Vitals) belong to rolepod-uiproof.
+"""
+from __future__ import annotations
+
+import argparse
+from collections import deque
+import datetime as dt
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
+
+VERSION = 1
+UA = "Mozilla/5.0 (compatible; rolepod-seo/0.1; +https://github.com/nuttaruj/rolepod-seo)"
+BOTS = ["Googlebot", "Bingbot", "GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended", "CCBot"]
+
+SKIP_RE = re.compile(
+    r"(/wp-admin|/wp-login|/login|/signin|/sign-in|/register|/cart|/checkout|/account|/my-account"
+    r"|/privacy|/terms|/cookie|/legal|/tag/|/tags/|/category/|/page/\d+|/feed|/author/|/search"
+    r"|\?s=|/xmlrpc|/wp-json|/wp-content/)",
+    re.I,
+)
+ASSET_RE = re.compile(r"\.(pdf|jpe?g|png|gif|svg|webp|avif|zip|mp4|mp3|css|js|xml|json|ico|woff2?|txt)($|\?)", re.I)
+KEY_PAGES = [
+    ("about", re.compile(r"/about|/company|/team|/who-we-are|/our-story", re.I)),
+    ("services", re.compile(r"/service|/product|/solution|/what-we-do|/feature", re.I)),
+    ("pricing", re.compile(r"/pric|/plans|/packages", re.I)),
+    ("cases", re.compile(r"/case|/customer|/portfolio|/work|/testimonial|/review", re.I)),
+    ("blog", re.compile(r"/blog|/news|/article|/insight|/resource|/guide|/learn", re.I)),
+    ("contact", re.compile(r"/contact|/get-in-touch|/book|/quote|/demo", re.I)),
+    ("faq", re.compile(r"/faq|/help|/support|/question", re.I)),
+]
+QUESTION_RE = re.compile(r"^(who|what|when|where|why|how|can|could|does|do|is|are|should|which|will)\b|\?\s*$", re.I)
+SKIP_TAGS = ("script", "style", "noscript", "template", "svg")
+
+
+# ---------------------------------------------------------------- helpers
+def clean(s: str) -> str:
+    return re.sub(r"\s+", " ", s or "").strip()
+
+
+def norm(url: str) -> str:
+    """Normalise for comparisons: lower-case scheme+host, drop fragment, strip one trailing slash."""
+    p = urllib.parse.urlsplit(url.strip())
+    path = p.path or "/"
+    if len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    return urllib.parse.urlunsplit((p.scheme.lower(), p.netloc.lower(), path, p.query, ""))
+
+
+def host_of(url: str) -> str:
+    return urllib.parse.urlsplit(url).netloc.lower()
+
+
+def same_origin(a: str, b: str) -> bool:
+    return host_of(a) == host_of(b)
+
+
+def is_local(host: str) -> bool:
+    h = host.split(":")[0]
+    return h in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or re.match(r"^\d+\.\d+\.\d+\.\d+$", h) is not None
+
+
+def path_of(url: str) -> str:
+    p = urllib.parse.urlsplit(url)
+    return (p.path or "/") + (("?" + p.query) if p.query else "")
+
+
+class _Redirects(urllib.request.HTTPRedirectHandler):
+    def __init__(self):
+        super().__init__()
+        self.hops: list[tuple[int, str]] = []
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        self.hops.append((code, newurl))
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch(url: str, timeout: float, limit: int = 2_000_000) -> dict:
+    rh = _Redirects()
+    opener = urllib.request.build_opener(rh)
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": UA,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+    )
+    out = {"url": url, "status": 0, "final_url": url, "hops": [], "content_type": "", "x_robots": "", "body": b"", "error": ""}
+    try:
+        with opener.open(req, timeout=timeout) as r:
+            out["status"] = r.status
+            out["final_url"] = r.geturl()
+            out["content_type"] = r.headers.get("Content-Type", "") or ""
+            out["x_robots"] = r.headers.get("X-Robots-Tag", "") or ""
+            out["body"] = r.read(limit)
+    except urllib.error.HTTPError as e:
+        out["status"] = e.code
+        out["final_url"] = e.geturl() if hasattr(e, "geturl") else url
+        out["content_type"] = (e.headers.get("Content-Type", "") if e.headers else "") or ""
+        try:
+            out["body"] = e.read(500_000)
+        except Exception:
+            pass
+    except Exception as e:  # URLError, timeout, ssl
+        out["error"] = f"{type(e).__name__}: {e}"[:200]
+    out["hops"] = rh.hops
+    return out
+
+
+def decode(body: bytes, content_type: str) -> str:
+    m = re.search(r"charset=([\w-]+)", content_type or "", re.I)
+    for enc in ([m.group(1)] if m else []) + ["utf-8", "cp1252", "latin-1"]:
+        try:
+            return body.decode(enc)
+        except Exception:
+            continue
+    return body.decode("utf-8", "replace")
+
+
+# ---------------------------------------------------------------- HTML facts
+class Page(HTMLParser):
+    def __init__(self, base: str):
+        super().__init__(convert_charrefs=True)
+        self.base = base
+        self.title: str | None = None
+        self.metas: dict[str, str] = {}
+        self.canonical: str | None = None
+        self.icon = False
+        self.hreflang = 0
+        self.lang = ""
+        self.charset = False
+        self.h: dict[int, list[str]] = {1: [], 2: [], 3: []}
+        self.jsonld_raw: list[str] = []
+        self.text: list[str] = []
+        self.imgs = 0
+        self.imgs_noalt = 0
+        self.links_int = 0
+        self.links_ext = 0
+        self.internal: list[str] = []
+        self.author_signals: set[str] = set()
+        self.faq_signals: set[str] = set()
+        self.contact: set[str] = set()
+        self.dates: set[str] = set()
+        self.details = 0
+        self.tables = 0
+        self.lists = 0
+        self.mixed = 0
+        self._skip = 0
+        self._title_buf: list[str] | None = None
+        self._h_buf: list[str] | None = None
+        self._h_level = 0
+        self._ld_buf: list[str] | None = None
+
+    def handle_starttag(self, tag, attrs):
+        a = {k: (v or "") for k, v in attrs}
+        if tag == "html":
+            self.lang = a.get("lang", "")
+        if tag in SKIP_TAGS:
+            self._skip += 1
+            if tag == "script" and a.get("type", "").replace(" ", "").lower() == "application/ld+json":
+                self._ld_buf = []
+            return
+        if self._skip:
+            return
+        cls = a.get("class", "") + " " + a.get("id", "")
+        if re.search(r"(^|[\s_-])(author|byline|written-by)([\s_-]|$)", cls, re.I):
+            self.author_signals.add("class:author")
+        if re.search(r"(^|[\s_-])faq", cls, re.I):
+            self.faq_signals.add("class:faq")
+        if tag == "title" and self.title is None:
+            self._title_buf = []
+        elif tag == "meta":
+            name = (a.get("name") or a.get("property") or a.get("http-equiv") or "").lower()
+            if a.get("charset"):
+                self.charset = True
+            if name:
+                self.metas.setdefault(name, a.get("content", ""))
+            if name == "author":
+                self.author_signals.add("meta:author")
+            if name in ("article:published_time", "article:modified_time", "date", "dc.date", "dcterms.date"):
+                self.dates.add("meta:" + name)
+        elif tag == "link":
+            rel = a.get("rel", "").lower().split()
+            href = a.get("href", "")
+            if "canonical" in rel and self.canonical is None:
+                self.canonical = href
+            if "alternate" in rel and a.get("hreflang"):
+                self.hreflang += 1
+            if "author" in rel:
+                self.author_signals.add("link:author")
+            if "icon" in rel:
+                self.icon = True
+        elif tag in ("h1", "h2", "h3"):
+            self._h_level = int(tag[1])
+            self._h_buf = []
+        elif tag == "img":
+            self.imgs += 1
+            if not a.get("alt", "").strip():
+                self.imgs_noalt += 1
+            if a.get("src", "").startswith("http://") and self.base.startswith("https://"):
+                self.mixed += 1
+        elif tag == "a":
+            href = a.get("href", "")
+            if href.startswith("tel:"):
+                self.contact.add("tel")
+            elif href.startswith("mailto:"):
+                self.contact.add("mailto")
+            elif href and not href.startswith(("#", "javascript:")):
+                full = urllib.parse.urljoin(self.base, href)
+                if full.startswith("http"):
+                    if same_origin(full, self.base):
+                        self.links_int += 1
+                        self.internal.append(full)
+                    else:
+                        self.links_ext += 1
+            if "author" in a.get("rel", "").lower().split():
+                self.author_signals.add("a:rel-author")
+        elif tag == "time":
+            self.dates.add("time")
+        elif tag == "address":
+            self.contact.add("address")
+        elif tag == "details":
+            self.details += 1
+        elif tag == "table":
+            self.tables += 1
+        elif tag in ("ul", "ol"):
+            self.lists += 1
+
+    def handle_endtag(self, tag):
+        if tag in SKIP_TAGS:
+            if tag == "script" and self._ld_buf is not None:
+                self.jsonld_raw.append("".join(self._ld_buf))
+                self._ld_buf = None
+            if self._skip:
+                self._skip -= 1
+            return
+        if self._skip:
+            return
+        if tag == "title" and self._title_buf is not None:
+            self.title = clean(" ".join(self._title_buf))
+            self._title_buf = None
+        elif tag in ("h1", "h2", "h3") and self._h_buf is not None:
+            txt = clean(" ".join(self._h_buf))
+            self.h[self._h_level].append(txt)
+            if re.search(r"\b(faq|frequently asked|common questions)\b", txt, re.I):
+                self.faq_signals.add("heading:faq")
+            self._h_buf = None
+
+    def handle_data(self, data):
+        if self._ld_buf is not None:
+            self._ld_buf.append(data)
+            return
+        if self._skip:
+            return
+        if self._title_buf is not None:
+            self._title_buf.append(data)
+        if self._h_buf is not None:
+            self._h_buf.append(data)
+        self.text.append(data)
+
+
+def ld_walk(blocks: list[str]):
+    types: list[str] = []
+    ok = bad = 0
+    has_author = False
+    for raw in blocks:
+        try:
+            data = json.loads(raw.strip())
+        except Exception:
+            bad += 1
+            continue
+        ok += 1
+        queue = deque([data])
+        while queue:
+            x = queue.popleft()
+            if isinstance(x, dict):
+                t = x.get("@type")
+                if isinstance(t, str):
+                    types.append(t)
+                elif isinstance(t, list):
+                    types.extend(str(i) for i in t)
+                if "author" in x:
+                    has_author = True
+                queue.extend(x.values())
+            elif isinstance(x, list):
+                queue.extend(x)
+    seen: list[str] = []
+    for t in types:
+        if t not in seen:
+            seen.append(t)
+    return seen, ok, bad, has_author
+
+
+def page_facts(url: str, res: dict) -> dict:
+    row = {
+        "url": url,
+        "status": res["status"],
+        "final_url": res["final_url"],
+        "hops": len(res["hops"]),
+        "redirect_chain": [f"{c} → {u}" for c, u in res["hops"]],
+        "content_type": res["content_type"].split(";")[0].strip(),
+        "error": res["error"],
+    }
+    if res["error"] or res["status"] >= 400 or not res["body"] or "html" not in res["content_type"].lower():
+        return row
+    html = decode(res["body"], res["content_type"])
+    p = Page(res["final_url"])
+    try:
+        p.feed(html)
+        p.close()
+    except Exception as e:  # keep the row; note the parser failure
+        row["error"] = f"parse: {type(e).__name__}"
+    words = len(" ".join(p.text).split())
+    types, ld_ok, ld_bad, ld_author = ld_walk(p.jsonld_raw)
+    desc = p.metas.get("description", "")
+    robots = p.metas.get("robots", "")
+    canon = p.canonical
+    if canon:
+        canon_abs = urllib.parse.urljoin(res["final_url"], canon)
+        if norm(canon_abs) == norm(res["final_url"]):
+            canonical_ok = "self"
+        elif not same_origin(canon_abs, res["final_url"]):
+            canonical_ok = "cross-domain"
+        else:
+            canonical_ok = "other"
+    else:
+        canon_abs = ""
+        canonical_ok = "missing"
+    q_headings = [h for h in p.h[2] + p.h[3] if QUESTION_RE.search(h)]
+    if ld_author or "Person" in types:
+        p.author_signals.add("ld:author")
+    faq_visible = bool(p.faq_signals) or p.details >= 2
+    row.update(
+        {
+            "title": p.title or "",
+            "title_len": len(p.title or ""),
+            "description": desc,
+            "description_len": len(desc),
+            "h1_count": len(p.h[1]),
+            "h1": p.h[1][0] if p.h[1] else "",
+            "h1_all": p.h[1],
+            "h2_count": len(p.h[2]),
+            "h2": p.h[2][:12],
+            "h3_count": len(p.h[3]),
+            "canonical": canon_abs,
+            "canonical_ok": canonical_ok,
+            "robots_meta": robots,
+            "x_robots": res["x_robots"],
+            "noindex": ("noindex" in robots.lower()) or ("noindex" in res["x_robots"].lower()),
+            "lang": p.lang,
+            "charset": p.charset,
+            "viewport": bool(p.metas.get("viewport")),
+            "favicon": p.icon,
+            "og": {
+                "title": bool(p.metas.get("og:title")),
+                "description": bool(p.metas.get("og:description")),
+                "image": bool(p.metas.get("og:image")),
+                "type": p.metas.get("og:type", ""),
+            },
+            "twitter_card": p.metas.get("twitter:card", ""),
+            "hreflang_count": p.hreflang,
+            "word_count": words,
+            "images": p.imgs,
+            "images_no_alt": p.imgs_noalt,
+            "links_internal": p.links_int,
+            "links_external": p.links_ext,
+            "mixed_content": p.mixed,
+            "schema_types": types,
+            "jsonld_blocks": ld_ok,
+            "jsonld_invalid": ld_bad,
+            "author_signals": sorted(p.author_signals),
+            "author_present": bool(p.author_signals),
+            "faq_visible": faq_visible,
+            "faq_schema": "FAQPage" in types,
+            "question_headings": len(q_headings),
+            "date_signals": sorted(p.dates),
+            "date_visible": bool(p.dates),
+            "contact_signals": sorted(p.contact),
+            "tables": p.tables,
+            "lists": p.lists,
+            "_internal_links": p.internal,
+        }
+    )
+    return row
+
+
+# ---------------------------------------------------------------- robots / sitemap
+def parse_robots(text: str):
+    groups: list[tuple[list[str], list[tuple[str, str]]]] = []
+    cur = None
+    sitemaps: list[str] = []
+    for line in text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        k, v = [s.strip() for s in line.split(":", 1)]
+        kl = k.lower()
+        if kl == "user-agent":
+            if cur is not None and cur[1]:
+                groups.append(cur)
+                cur = None
+            if cur is None:
+                cur = ([v.lower()], [])
+            else:
+                cur[0].append(v.lower())
+        elif kl in ("allow", "disallow") and cur is not None:
+            cur[1].append((kl, v))
+        elif kl == "sitemap":
+            sitemaps.append(v)
+    if cur is not None:
+        groups.append(cur)
+    return groups, sitemaps
+
+
+def robots_verdict(groups, ua: str) -> dict:
+    u = ua.lower()
+    rules = None
+    via = "none"
+    for agents, r in groups:
+        if any(a != "*" and (a == u or a in u or u in a) for a in agents):
+            rules, via = r, "specific"
+            break
+    if rules is None:
+        for agents, r in groups:
+            if "*" in agents:
+                rules, via = r, "wildcard"
+                break
+    if rules is None:
+        return {"verdict": "no-rules", "via": via, "disallow": []}
+    dis = [p for k, p in rules if k == "disallow" and p]
+    allow_root = any(k == "allow" and p == "/" for k, p in rules)
+    if "/" in dis and not allow_root:
+        v = "blocked-all"
+    elif dis:
+        v = "partial"
+    else:
+        v = "allowed"
+    return {"verdict": v, "via": via, "disallow": dis[:20]}
+
+
+def read_sitemaps(urls: list[str], timeout: float, log) -> dict:
+    info = {"checked": [], "entries": [], "errors": [], "index_children": 0}
+    queue = list(urls)
+    seen = set()
+    while queue and len(seen) < 25:
+        u = queue.pop(0)
+        if u in seen:
+            continue
+        seen.add(u)
+        res = fetch(u, timeout)
+        info["checked"].append({"url": u, "status": res["status"], "error": res["error"]})
+        if res["status"] != 200 or not res["body"]:
+            continue
+        try:
+            root = ET.fromstring(res["body"])
+        except ET.ParseError as e:
+            info["errors"].append(f"{u}: invalid XML ({e})")
+            continue
+        tag = root.tag.lower()
+        ns = {"s": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+        loc_path = "s:sitemap/s:loc" if ns else "sitemap/loc"
+        url_path = "s:url" if ns else "url"
+        if tag.endswith("sitemapindex"):
+            for loc in root.findall(loc_path, ns):
+                if loc.text:
+                    queue.append(loc.text.strip())
+                    info["index_children"] += 1
+        else:
+            for node in root.findall(url_path, ns):
+                loc = node.find("s:loc" if ns else "loc", ns)
+                lm = node.find("s:lastmod" if ns else "lastmod", ns)
+                if loc is not None and loc.text:
+                    info["entries"].append({"loc": loc.text.strip(), "lastmod": (lm.text or "").strip() if lm is not None else ""})
+    log(f"sitemap: {len(info['entries'])} URLs from {len(info['checked'])} file(s)")
+    return info
+
+
+# ---------------------------------------------------------------- selection
+def discover(base: str, home_links: list[str], sitemap_locs: list[str], mode: str, max_pages: int) -> list[str]:
+    ordered: list[str] = []
+    seen = {norm(base)}
+
+    def add(u: str):
+        u2 = urllib.parse.urlsplit(u)._replace(fragment="").geturl()
+        if not same_origin(u2, base) or SKIP_RE.search(u2) or ASSET_RE.search(u2):
+            return
+        k = norm(u2)
+        if k in seen:
+            return
+        seen.add(k)
+        ordered.append(u2)
+
+    for u in home_links:
+        add(u)
+    for u in sitemap_locs:
+        add(u)
+    if mode == "full":
+        return [base] + ordered[: max_pages - 1]
+    picked: list[str] = []
+    for _label, rx in KEY_PAGES:
+        for u in ordered:
+            if rx.search(path_of(u)) and u not in picked:
+                picked.append(u)
+                break
+        if len(picked) >= 6:
+            break
+    return [base] + picked[:6]
+
+
+def page_role(url: str, base: str) -> str:
+    if norm(url) == norm(base):
+        return "home"
+    p = path_of(url)
+    for label, rx in KEY_PAGES:
+        if rx.search(p):
+            return {"about": "trust", "services": "money", "pricing": "money", "cases": "trust", "blog": "blog", "contact": "trust", "faq": "answer"}[label]
+    return "other"
+
+
+# ---------------------------------------------------------------- output
+TSV_COLS = [
+    "url", "role", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
+    "canonical_ok", "robots_meta", "lang", "word_count", "schema_types", "author_present", "faq_visible",
+    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "error",
+]
+
+
+def cell(row: dict, col: str) -> str:
+    v = row.get(col, "")
+    if col == "schema_types":
+        return ",".join(v) if isinstance(v, list) else ""
+    if col == "og":
+        if not isinstance(v, dict):
+            return ""
+        return "".join(k[0] for k in ("title", "description", "image") if v.get(k)) or "-"
+    if isinstance(v, bool):
+        return "y" if v else "n"
+    if isinstance(v, list):
+        return ";".join(map(str, v))
+    return str(v).replace("\t", " ").replace("\n", " ")
+
+
+def write_outputs(out: str, doc: dict):
+    os.makedirs(out, exist_ok=True)
+    rows = doc["pages"]
+    with open(os.path.join(out, "pages.tsv"), "w", encoding="utf-8") as f:
+        f.write("\t".join(TSV_COLS) + "\n")
+        for r in rows:
+            f.write("\t".join(cell(r, c) for c in TSV_COLS) + "\n")
+    md_cols = ["path", "status", "title", "desc", "h1", "canonical", "robots", "words", "schema", "author", "faq", "q-h2/3"]
+    lines = ["| " + " | ".join(md_cols) + " |", "|" + "---|" * len(md_cols)]
+    for r in rows:
+        t = r.get("title", "")
+        tl = r.get("title_len", 0)
+        dl = r.get("description_len", 0)
+        h1c = r.get("h1_count", "")
+        cells = [
+                    path_of(r["url"]),
+                    str(r["status"]) + (f" ({r['hops']} hop)" if r.get("hops") else "") + (f" {r['error']}" if r.get("error") else ""),
+                    (t[:50] + ("…" if len(t) > 50 else "") + f" ({tl})") if t else ("—" if r["status"] else ""),
+                    (str(dl) if dl else "missing") if "description_len" in r else "",
+                    (f"{h1c}× " + (r.get("h1", "")[:40] or "")) if h1c != "" else "",
+                    r.get("canonical_ok", ""),
+                    r.get("robots_meta", "") or "—",
+                    str(r.get("word_count", "")),
+                    ",".join(r.get("schema_types", [])) or "—",
+                    cell(r, "author_present"),
+                    (cell(r, "faq_visible") + "/" + cell(r, "faq_schema")) if "faq_visible" in r else "",
+                    str(r.get("question_headings", "")),
+                ]
+        lines.append("| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |")
+    with open(os.path.join(out, "pages.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+        f.write("\nfaq = visible/schema · q-h2/3 = question-phrased H2/H3 · og = t/d/i for og:title / og:description / og:image present\n")
+    with open(os.path.join(out, "site.json"), "w", encoding="utf-8") as f:
+        json.dump(doc["site"], f, indent=2, ensure_ascii=False)
+    with open(os.path.join(out, "collect.json"), "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- main
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("base_url")
+    ap.add_argument("--mode", choices=["quick", "full"], default="quick")
+    ap.add_argument("--urls", help="file with one URL per line; overrides discovery")
+    ap.add_argument("--out", help="output directory")
+    ap.add_argument("--max-pages", type=int, default=150)
+    ap.add_argument("--timeout", type=float, default=15.0)
+    ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--fixed-time", help="ISO timestamp to stamp instead of now (tests)")
+    a = ap.parse_args(argv)
+
+    base = a.base_url if re.match(r"^https?://", a.base_url, re.I) else "https://" + a.base_url
+    if not urllib.parse.urlsplit(base).path:
+        base += "/"
+    host = host_of(base)
+    now = a.fixed_time or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out = a.out or os.path.join(".rolepod-seo", f"collect-{host.replace(':', '-')}-{now[:10].replace('-', '')}")
+
+    def log(msg: str):
+        if not a.quiet:
+            print(msg, file=sys.stderr)
+
+    log(f"rolepod-seo collect v{VERSION} — {base} ({a.mode})")
+
+    # 1. home
+    home = fetch(base, a.timeout)
+    home_row = page_facts(base, home)
+    if home["error"] or home["status"] >= 400:
+        log(f"home: {home['status']} {home['error']}")
+
+    # 2. robots + sitemap + llms.txt
+    origin = urllib.parse.urlsplit(home["final_url"] if home["final_url"].startswith("http") else base)
+    root = f"{origin.scheme}://{origin.netloc}/"
+    rob = fetch(root + "robots.txt", a.timeout)
+    groups, robot_sitemaps = ([], [])
+    if rob["status"] == 200 and rob["body"]:
+        groups, robot_sitemaps = parse_robots(decode(rob["body"], rob["content_type"]))
+    robots_info = {
+        "url": root + "robots.txt",
+        "status": rob["status"],
+        "error": rob["error"],
+        "sitemaps_declared": robot_sitemaps,
+        "agents": {ua: robots_verdict(groups, ua) for ua in BOTS},
+        "wildcard": robots_verdict(groups, "*") if groups else {"verdict": "no-rules", "via": "none", "disallow": []},
+        "blocks_assets": any(re.search(r"\.(css|js)\b|/wp-includes|/assets|/static|/_next", p, re.I) for _, r in groups for k, p in r if k == "disallow"),
+    }
+    sm_urls = [urllib.parse.urljoin(root, s) for s in robot_sitemaps] or [root + "sitemap.xml"]
+    sitemap = read_sitemaps(sm_urls, a.timeout, log)
+    if not sitemap["entries"] and not robot_sitemaps:
+        alt = read_sitemaps([root + "sitemap_index.xml"], a.timeout, log)
+        if alt["entries"]:
+            sitemap = alt
+    llms = fetch(root + "llms.txt", a.timeout, limit=50_000)
+    llms_present = llms["status"] == 200 and b"<html" not in llms["body"][:2000].lower()
+
+    # 3. page selection
+    if a.urls:
+        with open(a.urls, encoding="utf-8") as f:
+            urls = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+        if norm(base) not in {norm(u) for u in urls}:
+            urls = [base] + urls
+    else:
+        urls = discover(base, home_row.get("_internal_links", []), [e["loc"] for e in sitemap["entries"]], a.mode, a.max_pages)
+    log(f"pages: {len(urls)} selected")
+
+    # 4. fetch pages
+    rows = [home_row]
+    for u in urls[1:]:
+        res = fetch(u, a.timeout)
+        rows.append(page_facts(u, res))
+        log(f"  {res['status'] or 'ERR':>4} {path_of(u)}")
+    for r in rows:
+        r["role"] = page_role(r["url"], base)
+    sitemap_set = {norm(e["loc"]) for e in sitemap["entries"]}
+    for r in rows:
+        r["in_sitemap"] = norm(r["url"]) in sitemap_set
+
+    # 5. site-level cross-page facts
+    by_title: dict[str, list[str]] = {}
+    by_desc: dict[str, list[str]] = {}
+    for r in rows:
+        if r.get("title"):
+            by_title.setdefault(r["title"], []).append(path_of(r["url"]))
+        if r.get("description"):
+            by_desc.setdefault(r["description"], []).append(path_of(r["url"]))
+    fetched_norm = {norm(r["url"]): r for r in rows}
+    sitemap_not_ok = [e["loc"] for e in sitemap["entries"] if norm(e["loc"]) in fetched_norm and fetched_norm[norm(e["loc"])]["status"] != 200]
+    sitemap_noindex = [e["loc"] for e in sitemap["entries"] if norm(e["loc"]) in fetched_norm and fetched_norm[norm(e["loc"])].get("noindex")]
+    unchecked = [e["loc"] for e in sitemap["entries"] if norm(e["loc"]) not in fetched_norm]
+
+    variants = {}
+    if not is_local(host):
+        h = origin.netloc
+        alt_host = h[4:] if h.startswith("www.") else "www." + h
+        for label, u in (("http", f"http://{h}/"), ("alt-host", f"{origin.scheme}://{alt_host}/")):
+            v = fetch(u, a.timeout, limit=1000)
+            variants[label] = {"url": u, "status": v["status"], "final_url": v["final_url"], "hops": len(v["hops"]), "error": v["error"]}
+    else:
+        variants = {"note": "not assessed (local host)"}
+
+    orphan_candidates = [path_of(e["loc"]) for e in sitemap["entries"] if norm(e["loc"]) not in {norm(u) for u in home_row.get("_internal_links", [])} and norm(e["loc"]) != norm(base)]
+
+    site = {
+        "base_url": base,
+        "host": host,
+        "final_home_url": home["final_url"],
+        "home_status": home["status"],
+        "https": home["final_url"].startswith("https://"),
+        "robots": robots_info,
+        "sitemap": {
+            "declared_in_robots": bool(robot_sitemaps),
+            "files": sitemap["checked"],
+            "url_count": len(sitemap["entries"]),
+            "with_lastmod": sum(1 for e in sitemap["entries"] if e["lastmod"]),
+            "errors": sitemap["errors"],
+            "listed_but_not_200": sitemap_not_ok,
+            "listed_but_noindex": sitemap_noindex,
+            "not_fetched_count": len(unchecked),
+            "not_linked_from_home": orphan_candidates[:50],
+        },
+        "llms_txt": {"url": root + "llms.txt", "present": llms_present, "status": llms["status"]},
+        "host_variants": variants,
+        "duplicates": {
+            "titles": {t: p for t, p in by_title.items() if len(p) > 1},
+            "descriptions": {d: p for d, p in by_desc.items() if len(p) > 1},
+        },
+        "redirect_chains": [{"url": r["url"], "chain": r["redirect_chain"]} for r in rows if r.get("hops", 0) >= 1],
+        "failed_pages": [{"url": r["url"], "status": r["status"], "error": r["error"]} for r in rows if r["status"] != 200 or r["error"]],
+        "pages_fetched": sum(1 for r in rows if r["status"] == 200),
+        "pages_selected": len(rows),
+    }
+    for r in rows:
+        r.pop("_internal_links", None)
+    doc = {
+        "tool": "rolepod-seo/collect",
+        "version": VERSION,
+        "collected_at": now,
+        "base_url": base,
+        "mode": a.mode,
+        "pages": rows,
+        "site": site,
+    }
+    write_outputs(out, doc)
+    log(f"wrote {out}/pages.md, pages.tsv, site.json, collect.json — {site['pages_fetched']}/{site['pages_selected']} pages 200")
+    print(out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

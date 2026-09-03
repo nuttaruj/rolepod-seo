@@ -1,0 +1,21 @@
+{
+  "name": "rolepod-seo",
+  "displayName": "Rolepod SEO",
+  "version": "0.1.0",
+  "description": "SEO + GEO + AEO site audit skills for AI coding agents — Quick/Full audit across classic search, generative engines and answer engines, scored 1–10 per dimension with quoted evidence, plus a prioritized fix plan that hands off to rolepod-uiproof, rolepod-wplab and the rolepod parent roles. Skills only, no MCP server.",
+  "author": {
+    "name": "nuttaruj"
+  },
+  "homepage": "https://github.com/nuttaruj/rolepod-seo",
+  "repository": "https://github.com/nuttaruj/rolepod-seo",
+  "license": "MIT",
+  "keywords": [
+    "seo",
+    "geo",
+    "aeo",
+    "site-audit",
+    "structured-data",
+    "ai-search",
+    "cursor"
+  ]
+}

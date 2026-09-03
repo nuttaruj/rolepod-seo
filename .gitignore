@@ -1,0 +1,24 @@
+# runtime artifacts written by the skills in a consuming project
+.rolepod-seo/
+
+# parent-plugin marker + evidence (Extension Protocol v1, dogfooding)
+.rolepod/
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# python
+__pycache__/
+*.pyc
+
+# test scratch
+tests/fixture/.out/
+
+# internal design specs — kept locally only
+brief/
+
+# claude harness local state
+.claude/

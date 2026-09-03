@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "rolepod-seo",
+  "description": "SEO + GEO + AEO site audit skills for AI coding agents — Quick/Full audit, 1–10 scores with quoted evidence, prioritized fix plan that hands off to rolepod-uiproof, rolepod-wplab and the rolepod parent roles. Skills only, no MCP server.",
+  "owner": {
+    "name": "nuttaruj",
+    "url": "https://github.com/nuttaruj"
+  },
+  "plugins": [
+    {
+      "name": "rolepod-seo",
+      "source": "./plugins/rolepod-seo",
+      "description": "/seo-audit — Quick or Full site audit across SEO (titles, meta, canonicals, robots, sitemap, structured data, internal links, content depth), GEO (E-E-A-T surface, entity clarity, citation-friendly structure, AI-bot crawl policy) and AEO (direct-answer blocks, question headings, FAQ / HowTo / Speakable schema, local signals). Every finding quotes the page and the tag; scores 1–10 per dimension; markdown report + JSON sidecar + Artifact. Calls rolepod-uiproof for rendered-DOM / CWV when installed, hands WordPress writes to rolepod-wplab and copy to the rolepod content-strategist. No MCP server, no hooks.",
+      "version": "0.1.0",
+      "author": {
+        "name": "nuttaruj"
+      },
+      "homepage": "https://github.com/nuttaruj/rolepod-seo",
+      "repository": "https://github.com/nuttaruj/rolepod-seo",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": [
+        "seo",
+        "geo",
+        "aeo",
+        "site-audit",
+        "structured-data",
+        "ai-search",
+        "ai-agents",
+        "rolepod"
+      ]
+    }
+  ]
+}

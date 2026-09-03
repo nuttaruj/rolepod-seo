@@ -1,0 +1,3 @@
+# Clean-room guard (brief 02 / D4). One distinctive phrase per line, matched
+# case-insensitively as a literal substring across skills/, README.md, docs/.
+# Populated from the reference repo's own wording — never from ours.

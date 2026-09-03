@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>__BASE__/</loc><lastmod>2026-02-12</lastmod></url>
+  <url><loc>__BASE__/about.html</loc><lastmod>2025-11-03</lastmod></url>
+  <url><loc>__BASE__/services.html</loc><lastmod>2025-11-03</lastmod></url>
+  <url><loc>__BASE__/pricing.html</loc><lastmod>2026-01-15</lastmod></url>
+  <url><loc>__BASE__/faq.html</loc><lastmod>2026-01-15</lastmod></url>
+  <url><loc>__BASE__/contact.html</loc></url>
+  <url><loc>__BASE__/blog/</loc><lastmod>2026-02-12</lastmod></url>
+  <url><loc>__BASE__/blog/post-1.html</loc><lastmod>2026-02-12</lastmod></url>
+  <url><loc>__BASE__/blog/post-2.html</loc><lastmod>2026-01-03</lastmod></url>
+  <url><loc>__BASE__/old-page.html</loc><lastmod>2024-06-01</lastmod></url>
+</urlset>

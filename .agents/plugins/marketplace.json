@@ -1,0 +1,22 @@
+{
+  "name": "rolepod-seo",
+  "interface": {
+    "displayName": "Rolepod SEO",
+    "shortDescription": "SEO + GEO + AEO site audit skills — Quick/Full audit, 1–10 scores with evidence, prioritized fix plan. No MCP server.",
+    "developerName": "nuttaruj",
+    "websiteURL": "https://github.com/nuttaruj/rolepod-seo"
+  },
+  "plugins": [
+    {
+      "name": "rolepod-seo",
+      "source": {
+        "source": "local",
+        "path": "./plugins/rolepod-seo"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
