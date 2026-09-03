@@ -98,6 +98,7 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
   "generated_at": "2026-09-03T10:00:00Z",
   "site": { "base_url": "https://example.com/", "host": "example.com", "mode": "quick",
             "site_type": { "type": "local", "confidence": "high", "signals": { "local": ["home: address + phone"] } } },
+  "headline": "One sentence for the cover: the state of the site in the reader's words.",
   "summary": "Three to six sentences: overall state, the first fix, the biggest strength.",
   "collection": {
     "tiers": { "a": true, "b": false, "c": false },
@@ -156,24 +157,33 @@ orders by effect and lists `none` items last under "No effect on Google
 Search — optional"; they never enter the priority matrix, the roadmap,
 the quick wins or the chat summary. The markdown report follows the same
 order. `verify` and `leading_indicator` are optional per finding (see
-`docs/report-schema.md`). `summary` (optional) is the executive summary; `status_label` (optional,
+`docs/report-schema.md`). `headline` (optional) is the one-sentence cover line — write it; the
+renderer only generates a count-based fallback. `summary` (optional) is
+the executive summary; `status_label` (optional,
 derived from the score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical) is
 what the HTML cover shows — the renderer computes it when absent.
 
 ## 4. HTML report — `reports/seo-audit-<host>-<date>.html`
 
 Rendered from the sidecar by `scripts/render_report.py`; never hand-written.
-Sections in order: cover (host, mode, date, pages, tiers; three score cards
-colored by `status_label` with fail / warn / pass counts), executive
-summary (site type, `summary` or generated text, Fix-first and Quick-wins
-boxes), since last audit (with `--previous`), pages audited (findings per
-page; + title / words / links-in / depth / schema with `--collect`), SEO /
-GEO / AEO findings tables (Signal · Evidence · Fix · Page · Status chip),
-priority matrix (priority chip · Issue · Dim · Effort · Impact · Owner ·
-Exact change · Verify), roadmap derived from priorities (week 1 / weeks 2–3
-/ month 2 / ongoing with decisions, not-assessed and leading indicators),
-decisions for the owner, what's working, not assessed, how to read the
-scores, glossary (Full mode). Inline CSS
+Layout: a sticky sidebar (host, mode · date, numbered section nav, Save as
+PDF) beside a 900 px column. Sections in order: hero (chips: pages fetched,
+tiers, site type; one-sentence `headline`; three score cards with a ring
+gauge, band, status label, fail / warn / pass counts and the by-group
+line), 01 executive summary (`summary` or generated text, site type line,
+Fix-first and Quick-wins cards, since-last-audit block with
+`--previous`), 02 pages audited (findings per page; + words / links-in /
+depth / schema with `--collect`), 03 findings (per dimension: pill, group,
+counts; one card per open finding with Evidence and Fix panels; "Also
+observed" for pass items and remaining drivers; a muted pointer to the
+optional section for `none` items), 04 priority matrix (cards: priority
+chip + dim / effort / impact / owner · title + fix · Verify panel), 05
+roadmap (Week 1 / Weeks 2–3 / Month 2 cards + a dark Ongoing card: Decide /
+Prove / Watch / Re-audit), 06 owner calls and strengths, 07 not assessed,
+08 no effect on Google Search (optional, listed last), 09 how to read the
+scores (band cards), 10 glossary (Full mode). Instrument Sans + JetBrains
+Mono load from Google Fonts when online and fall back to system fonts
+offline — the only external request. Inline CSS
 only, light / dark tokens, a "Save as PDF" button (`window.print()` only —
 no download link, no PDF library; the Claude Artifact viewer blocks
 page-initiated downloads and may restrict print, hence the ⌘P / Ctrl+P

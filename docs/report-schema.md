@@ -16,6 +16,7 @@ every field below is present there.
 | `generated_at` | string | ISO 8601 UTC |
 | `site` | object | `base_url`, `host`, `mode` (`quick` \| `full`), optional `site_type` |
 | `site.site_type` | object | optional — `{ type, confidence, signals }` from the collector: `saas` \| `ecommerce` \| `local` \| `publisher` \| `agency` \| `unknown`; `confidence` `high` \| `low` \| `none` |
+| `headline` | string | optional — one sentence for the report cover ("Solid foundations, three blockers …"); the renderer generates a count-based fallback when absent |
 | `summary` | string | optional — the executive summary (3–6 sentences); the HTML renderer generates one when absent |
 | `collection` | object | what was collected and how (below) |
 | `scores` | object | `seo`, `geo`, `aeo` (below) |

@@ -22,6 +22,7 @@
       }
     }
   },
+  "headline": "Solid foundations, three blockers between this site and both search engines.",
   "summary": "The site has the basics right on the homepage and a strong FAQ page, but a cross-domain canonical on the main blog post, a noindex draft in the sitemap and no structured data on the FAQ and contact pages hold back both classic and AI search. Fix the canonical first, then add FAQPage and LocalBusiness schema; both are one-file changes. AI bots are blocked by policy — a decision for the owner, not a defect.",
   "collection": {
     "tiers": {

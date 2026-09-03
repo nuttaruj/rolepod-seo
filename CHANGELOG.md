@@ -6,6 +6,25 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-03
+
+### Changed
+
+- **HTML report redesigned** after the owner's Claude Design mock: sticky
+  sidebar (host, mode · date, numbered section nav, lime Save as PDF), dark
+  hero with a one-sentence `headline` and three ring-gauge score cards,
+  numbered section headers, fix-first / quick-wins cards, pages table in a
+  card, one card per open finding with Evidence and Fix panels plus an
+  "Also observed" list, priority matrix as cards with a Verify panel,
+  roadmap cards + a dark Ongoing card (Decide / Prove / Watch / Re-audit),
+  owner-call cards, "Working" strength cards, not-assessed cards, the
+  optional "no effect on Google Search" list, band cards, glossary cards.
+  Instrument Sans + JetBrains Mono from Google Fonts with system fallbacks
+  (the only external request); light / dark tokens; print rules keep the
+  colours and drop the sidebar.
+- Sidecar (additive): optional top-level `headline` for the cover; the
+  renderer generates a count-based fallback.
+
 ## [0.6.0] — 2026-09-03
 
 ### Added

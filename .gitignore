@@ -22,3 +22,6 @@ brief/
 
 # claude harness local state
 .claude/
+
+# owner design mock (local reference)
+SEO Audit Report.html
