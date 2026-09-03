@@ -6,6 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 python3 - <<'PY'
 import importlib.util, re, sys
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("v", "skills/seo-schema/scripts/validate.py")
 v = importlib.util.module_from_spec(spec); spec.loader.exec_module(v)
 doc = open("skills/seo-schema/references/schema-minimums.md").read()
