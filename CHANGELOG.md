@@ -6,6 +6,21 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-03
+
+### Added
+
+- **`findings[].seo_effect`** (`direct` | `indirect` | `none`, additive,
+  schema v1). Everything that changes Google Search comes first in every
+  table; `none` items (FAQ / HowTo rich results retired, `llms.txt`
+  ignored, `speakable`) are labelled **"no effect on Google Search"**,
+  listed last in their section and in a dedicated "No effect on Google
+  Search — optional" section after the roadmap, and never enter the
+  priority matrix, the roadmap, the quick wins, the per-page counts or the
+  chat summary. The renderer infers `none` for those signals when the
+  field is absent; an explicit value always wins. Score cards show the
+  optional count separately. References mark the rows concerned.
+
 ## [0.5.1] — 2026-09-03
 
 ### Changed

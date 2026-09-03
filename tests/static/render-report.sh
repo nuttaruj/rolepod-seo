@@ -59,9 +59,18 @@ check("Site type: <strong>local service</strong>" in doc, "site type line from s
 check("<th>Verify</th>" in doc and "canonical_ok = self" in doc, "verify column when a finding carries verify")
 check("Watch: Search Console" in doc, "leading indicator lands in the Ongoing phase")
 check('1 fail</span>' in doc and 'class="chip fail">404</span>' in doc, "per-page finding counts + status chips in the pages table")
-check(doc.count("</b> fail · <b>") == 3, "fail/warn/pass counts on the three cards")
+check(doc.count("</b> fail · <b>") == 3 and "1 optional (no Google effect)" in doc, "fail/warn/pass counts on the three cards + optional count")
 check("By group: <strong>technical</strong> — 2 fail" in doc, "SEO findings broken down by signal group (canonical + h1 → technical)")
-check("<strong>schema</strong> — 1 fail" in doc and "<strong>trust</strong> — 1 pass" in doc, "AEO faq-schema → schema, GEO ai-bot-policy → trust")
+check("<strong>trust</strong> — 1 pass" in doc, "GEO ai-bot-policy → trust")
+check('<section id="optional"' in doc and "No effect on Google Search" in doc and 'faq-schema</strong> <span class="chip none">' in doc, "seo_effect none → optional section, labelled, listed after roadmap")
+check(doc.index('<section id="roadmap"') < doc.index('<section id="optional"') < doc.index('<section id="strengths"'), "optional section sits after the roadmap")
+mat = doc[doc.index('<section id="matrix"'):doc.index('<section id="roadmap"')]
+check("faq-schema" not in mat, "no-effect finding excluded from the priority matrix")
+check("faq-schema" not in doc[doc.index("<h3>Quick wins</h3>"):doc.index('<section id="pages"')], "no-effect finding excluded from quick wins")
+aeo = doc[doc.index('<section id="aeo"'):doc.index('<section id="matrix"')]
+check("0 fail · 0 warn · 0 pass" in aeo and 'chip none">no effect on Google Search' in aeo, "AEO section counts exclude the none row but still lists it, labelled")
+for f_, want in (({"signal": "faq-schema"}, "none"), ({"signal": "llms-txt"}, "none"), ({"signal": "howto-schema"}, "none"), ({"signal": "canonical"}, "direct"), ({"signal": "faq-schema", "seo_effect": "direct"}, "direct"), ({"signal": "author", "seo_effect": "indirect"}, "indirect")):
+    check(r.effect_of(f_) == want, f"effect_of({f_}) = {r.effect_of(f_)} != {want}")
 for sig, want in (("canonical", "technical"), ("faq-schema", "schema"), ("answer-block", "answer"), ("ai-bot-policy", "trust"), ("content-depth", "content"), ("click-depth", "technical"), ("mixed-content", "technical"), ("organization-schema", "schema"), ("xyz", "other")):
     check(r.signal_group(sig) == want, f"signal_group({sig!r}) = {r.signal_group(sig)} != {want}")
 check('<section id="since"' in prevdoc and "<h3>Fixed</h3>" in prevdoc and "<h3>New</h3>" in prevdoc, "since-last-audit section with --previous")

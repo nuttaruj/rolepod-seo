@@ -61,6 +61,7 @@ every field below is present there.
 | `findings[].effort` | enum | `S` \| `M` \| `L` |
 | `findings[].impact` | enum | `H` \| `M` \| `L` |
 | `findings[].priority` | enum | `critical` \| `high` \| `medium` \| `quick-win` |
+| `findings[].seo_effect` | enum | `direct` \| `indirect` \| `none` — effect on Google Search; `none` items (retired rich results, ignored files) are labelled and listed last, and never enter the matrix, roadmap, quick wins or chat summary. Optional in the schema; the renderer infers `none` for faq / howto / llms / speakable signals when absent |
 | `findings[].verify` | string | optional — how to prove the fix landed (a command and the value to expect); shown as a matrix column |
 | `findings[].leading_indicator` | string | optional — what the owner watches without re-auditing (a Search Console query, an inbound-link count); listed in the roadmap's Ongoing phase |
 

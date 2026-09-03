@@ -160,8 +160,12 @@ python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.jso
 python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --artifact   # Claude Code only
 ```
 
-Pass `--previous` whenever an older sidecar for the same host exists in
-`reports/`: the report gains a "Since last audit" section (score deltas,
+Set `seo_effect` on every finding (`direct` / `indirect` / `none`). What
+changes Google Search comes first in every table; `none` items (retired
+rich results such as `FAQPage`, `llms.txt`) are labelled "no effect on
+Google Search", listed last, and never enter the matrix, roadmap, quick
+wins or the chat summary. Pass `--previous` whenever an older sidecar for
+the same host exists in `reports/`: the report gains a "Since last audit" section (score deltas,
 fixed / new / still-open findings by `id`) and the chat summary gets the
 same line. The HTML also derives a phased roadmap (week 1 / weeks 2–3 /
 month 2 / ongoing) and a quick-wins block from the priorities — no extra

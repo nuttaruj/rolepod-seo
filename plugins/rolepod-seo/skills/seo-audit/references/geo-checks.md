@@ -37,7 +37,7 @@ page. Three groups: trust surface, synthesizability, technical access.
 | AI-bot crawl policy | see below — a decision, not a defect | `robots.agents` verdicts | info (decision) |
 | Rendered-only content | none of title / description / body only after JS | Tier A vs Tier B | high |
 | Rich schema beyond basics | `Person` for authors; `Dataset` / `ClaimReview` only when honest; `speakable` on key answers | `schema_types` | low |
-| `llms.txt` | Google Search ignores it (AI optimization guide, 2026-05-15, updated 2026-07-10: neither helps nor harms); harmless; optional for other services | `llms_txt.present` | info — report presence, never recommend it, never call it a citation lever |
+| `llms.txt` | Google Search ignores it (AI optimization guide, 2026-05-15, updated 2026-07-10: neither helps nor harms); harmless; optional for other services | `llms_txt.present` | info, `seo_effect: none` — report presence, never recommend it, never call it a citation lever |
 | Clean HTML structure | headings carry the outline; no heading-as-styling | the heading list | low |
 | Agent actionability | interactive elements are real `<button>` / `<a>` / labelled inputs with programmatic names, visible in the accessibility tree, stable layout (CLS), no critical action hidden behind an overlay — what Lighthouse's *Agentic Browsing* category (13.3, default since 2026-05-07, pass-ratio not a score) checks | rolepod-uiproof `audit_a11y` findings (names / labels, tree) + `measure_cwv` CLS; or `npx lighthouse <url> --only-categories=agentic-browsing` | medium on money / booking / checkout pages; **not assessed** until one of those ran |
 

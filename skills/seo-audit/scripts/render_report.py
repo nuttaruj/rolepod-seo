@@ -81,6 +81,24 @@ def group_line(findings: list[dict], dim: str) -> str:
     return " · ".join(parts)
 
 
+# Signals with no effect on Google Search when the finding does not say otherwise.
+NO_EFFECT_RE = re.compile(r"faq-?page|faq-?schema|how-?to|llms|speakable", re.I)
+EFFECT_ORDER = {"direct": 0, "indirect": 1, "none": 2}
+EFFECT_LABEL = {"direct": "affects Google Search", "indirect": "indirect / AI engines", "none": "no effect on Google Search"}
+
+
+def effect_of(f: dict) -> str:
+    """Explicit findings[].seo_effect wins; otherwise infer 'none' for retired / ignored signals, else 'direct'."""
+    e = f.get("seo_effect")
+    if e in EFFECT_ORDER:
+        return e
+    return "none" if NO_EFFECT_RE.search(f.get("signal", "") or "") else "direct"
+
+
+def effective(findings: list[dict]) -> list[dict]:
+    return [f for f in findings if effect_of(f) != "none"]
+
+
 SITE_TYPE_LABEL = {"saas": "SaaS / software", "ecommerce": "e-commerce", "local": "local service", "publisher": "publisher / blog", "agency": "agency / services", "unknown": "not detected"}
 STATUS_LABEL = {"fail": "Fail", "warn": "Warn", "pass": "Pass", "not-assessed": "Not assessed"}
 DIM_NAME = {"seo": "SEO", "geo": "GEO", "aeo": "AEO"}
@@ -160,7 +178,9 @@ td.mono,code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fo
 .chip.fail{background:var(--bad-bg);color:var(--bad)}
 .chip.warn{background:var(--warn-bg);color:var(--warn)}
 .chip.pass{background:var(--good-bg);color:var(--good)}
-.chip.not-assessed,.chip.info{background:var(--na-bg);color:var(--na)}
+.chip.not-assessed,.chip.info,.chip.none{background:var(--na-bg);color:var(--na)}
+.chip.none{border:1px dashed var(--na)}
+tr.none td{opacity:.7}
 .chip.p-critical{background:var(--p-critical);color:#fff}
 .chip.p-high{background:var(--p-high);color:#fff}
 .chip.p-medium{background:var(--p-medium);color:#fff}
@@ -268,12 +288,13 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
             label, cls = "Not assessed", "na"
         score_txt = f"{score}<small>/10</small>" if isinstance(score, int) else "—"
         drivers = "".join(f"<li>{esc(x)}</li>" for x in s.get("drivers", [])[:3])
-        c = status_counts(findings, d)
+        c = status_counts(effective(findings), d)
+        n_opt = sum(1 for f in findings if f.get("dimension") == d and effect_of(f) == "none" and f.get("status") in ("fail", "warn"))
         out.append(f'<div class="card {cls}"><div class="dim">{DIM_NAME[d]}</div><div class="sub">{DIM_SUB[d]}</div>'
                    f'<div class="score">{score_txt}</div><span class="status">{esc(label)}</span>'
                    f'<div class="sub">band: {esc(s.get("band", "—"))}</div>'
-                   f'<div class="counts"><b>{c["fail"]}</b> fail · <b>{c["warn"]}</b> warn · <b>{c["pass"]}</b> pass</div>'
-                   + (f'<div class="counts groups">{group_line(findings, d)}</div>' if group_counts(findings, d) else "")
+                   f'<div class="counts"><b>{c["fail"]}</b> fail · <b>{c["warn"]}</b> warn · <b>{c["pass"]}</b> pass' + (f' · {n_opt} optional (no Google effect)' if n_opt else "") + '</div>'
+                   + (f'<div class="counts groups">{group_line(effective(findings), d)}</div>' if group_counts(effective(findings), d) else "")
                    + (f'<ul class="drivers">{drivers}</ul>' if drivers else "") + "</div>")
     out.append("</div></header>")
 
@@ -294,12 +315,12 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
             s = scores.get(d, {})
             lab, _ = score_status(s.get("score"))
             parts.append(f"{DIM_NAME[d]} {s.get('score', '—')}/10 ({lab})")
-        top = [f for f in findings if f.get("status") in ("fail", "warn")]
+        top = [f for f in effective(findings) if f.get("status") in ("fail", "warn")]
         top.sort(key=lambda f: (PRIORITY_ORDER.get(f.get("priority"), 9)))
         first = f" First fix: {top[0].get('fix')} ({path_of(top[0].get('page', ''))})." if top else ""
         out.append(f'<p class="lead">{esc(", ".join(parts))}.{esc(first)}</p>')
-    crit = [f for f in findings if f.get("priority") == "critical" and f.get("status") in ("fail", "warn")][:5]
-    quick = [f for f in findings if f.get("priority") == "quick-win" and f.get("status") in ("fail", "warn")][:5]
+    crit = [f for f in effective(findings) if f.get("priority") == "critical" and f.get("status") in ("fail", "warn")][:5]
+    quick = [f for f in effective(findings) if f.get("priority") == "quick-win" and f.get("status") in ("fail", "warn")][:5]
     out.append('<div class="two">')
     out.append('<div class="box"><h3>Fix first</h3>' + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> — {esc(f.get("fix"))}</li>' for f in crit) + '</ul>' if crit else '<p class="muted">No critical items.</p>') + '</div>')
     out.append('<div class="box"><h3>Quick wins</h3>' + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> — {esc(f.get("fix"))}</li>' for f in quick) + '</ul>' if quick else '<p class="muted">No quick wins tagged.</p>') + '</div>')
@@ -323,7 +344,7 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
     # pages
     pages = doc.get("pages", [])
     per_page: dict[str, dict[str, int]] = {}
-    for f in findings:
+    for f in effective(findings):
         if f.get("status") in ("fail", "warn"):
             per_page.setdefault(f.get("page", ""), {"fail": 0, "warn": 0})[f["status"]] += 1
     if pages:
@@ -348,25 +369,28 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
     # findings per dimension
     for d in ("seo", "geo", "aeo"):
         rows = [f for f in findings if f.get("dimension") == d and f.get("status") != "not-assessed"]
-        c = status_counts(findings, d)
+        c = status_counts(effective(findings), d)
         out.append(f'<section id="{d}"><h2>{DIM_NAME[d]} findings <span class="muted">— {DIM_SUB[d]} · {c["fail"]} fail · {c["warn"]} warn · {c["pass"]} pass</span></h2>')
-        if group_counts(findings, d):
-            out.append(f'<p class="muted">By group: {group_line(findings, d)}</p>')
+        if group_counts(effective(findings), d):
+            out.append(f'<p class="muted">By group: {group_line(effective(findings), d)}</p>')
         if not rows:
             out.append('<p class="muted">No findings recorded for this dimension.</p></section>')
             continue
         out.append('<div class="tablewrap"><table><thead><tr><th>Signal</th><th>Evidence</th><th>Fix</th><th>Page</th><th>Status</th></tr></thead><tbody>')
         order = {"fail": 0, "warn": 1, "pass": 2}
-        for f in sorted(rows, key=lambda f: (order.get(f.get("status"), 3), PRIORITY_ORDER.get(f.get("priority"), 9))):
+        for f in sorted(rows, key=lambda f: (EFFECT_ORDER[effect_of(f)], order.get(f.get("status"), 3), PRIORITY_ORDER.get(f.get("priority"), 9))):
             st = f.get("status", "")
-            out.append(f'<tr><td><strong>{esc(f.get("signal"))}</strong><br><span class="sev">{esc(f.get("severity"))}</span></td>'
+            eff = effect_of(f)
+            tag = f'<br><span class="chip none">{EFFECT_LABEL["none"]}</span>' if eff == "none" else (f'<br><span class="sev">{EFFECT_LABEL["indirect"]}</span>' if eff == "indirect" else "")
+            out.append(f'<tr class="{eff}"><td><strong>{esc(f.get("signal"))}</strong><br><span class="sev">{esc(f.get("severity"))}</span>{tag}</td>'
                        f'<td>{esc(f.get("evidence"))}</td><td>{esc(f.get("fix"))}</td>'
                        f'<td class="mono">{esc(path_of(f.get("page", "")))}</td>'
                        f'<td><span class="chip {esc(st)}">{esc(STATUS_LABEL.get(st, st))}</span></td></tr>')
         out.append("</tbody></table></div></section>")
 
     # priority matrix
-    matrix = [f for f in findings if f.get("status") in ("fail", "warn")]
+    matrix = [f for f in effective(findings) if f.get("status") in ("fail", "warn")]
+    optional = [f for f in findings if effect_of(f) == "none" and f.get("status") in ("fail", "warn")]
     matrix.sort(key=lambda f: (PRIORITY_ORDER.get(f.get("priority"), 9), {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(f.get("severity"), 4)))
     out.append('<section id="matrix"><h2>Priority matrix</h2>')
     has_verify = any(f.get("verify") for f in matrix)
@@ -388,7 +412,7 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
     out.append('<section id="roadmap"><h2>Roadmap</h2>')
     na_items = doc.get("not_assessed", [])
     decisions_ = [f for f in findings if f.get("severity") == "info" and f.get("owner") == "human"]
-    leading = [f for f in findings if f.get("leading_indicator")]
+    leading = [f for f in effective(findings) if f.get("leading_indicator")]
     for title, key, blurb in PHASES:
         out.append(f'<div class="phase"><h3>{esc(title)}</h3><p class="muted">{esc(blurb)}</p>')
         if key == "ongoing":
@@ -402,6 +426,16 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
         out.append(('<ul class="plain">' + "".join(items) + "</ul>") if items else '<p class="muted">nothing in this phase</p>')
         out.append("</div>")
     out.append("</section>")
+
+    # optional — no effect on Google Search, listed last on purpose
+    if optional:
+        out.append('<section id="optional"><h2>No effect on Google Search <span class="muted">— optional, listed last on purpose</span></h2>'
+                   '<p class="muted">These signals do not change crawling, indexing or ranking in Google Search (rich results retired, or the file is ignored). They may still help other answer engines. Do nothing here before the sections above are clean.</p>'
+                   '<div class="tablewrap"><table><thead><tr><th>Signal</th><th>Why no effect</th><th>Optional change</th><th>Page</th></tr></thead><tbody>')
+        for f in optional:
+            out.append(f'<tr class="none"><td><strong>{esc(f.get("signal"))}</strong> <span class="chip none">{EFFECT_LABEL["none"]}</span></td>'
+                       f'<td>{esc(f.get("evidence"))}</td><td>{esc(f.get("fix"))}</td><td class="mono">{esc(path_of(f.get("page", "")))}</td></tr>')
+        out.append("</tbody></table></div></section>")
 
     # decisions
     decisions = [f for f in findings if f.get("severity") == "info" and f.get("owner") == "human"]
@@ -435,7 +469,8 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
                '<p>Each dimension is scored 1–10 from the checklist hit-rate, weighted by page role (home and money pages count more than posts, posts more than utility pages). '
                'Bands: 1–3 critical · 4–5 below baseline · 6–7 solid · 8–9 strong · 10 model. Cover cards colour by score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical. '
                'Every finding quotes the page and the tag; "missing" is claimed only after every fetched page was checked; anything the collection tier could not see is listed under Not assessed with the tool that would prove it. '
-               f'Data tiers used: {esc(", ".join(tiers_used))}. Findings keep a stable id so the next audit can diff against this one.</p></section>')
+               f'Data tiers used: {esc(", ".join(tiers_used))}. Findings keep a stable id so the next audit can diff against this one. '
+               'Findings are ordered by effect: what changes Google Search first, then indirect / AI-engine signals, then items marked "no effect on Google Search", which never enter the priority matrix or the roadmap.</p></section>')
 
     # glossary
     if mode == "full":

@@ -83,7 +83,8 @@
       "impact": "H",
       "priority": "critical",
       "verify": "collect.py --urls one.txt → canonical_ok = self",
-      "leading_indicator": "Search Console: /blog/post-1.html listed under Pages within 2 weeks"
+      "leading_indicator": "Search Console: /blog/post-1.html listed under Pages within 2 weeks",
+      "seo_effect": "direct"
     },
     {
       "id": "aeo-faq-schema-faq",
@@ -98,7 +99,8 @@
       "effort": "S",
       "impact": "L",
       "priority": "medium",
-      "verify": "validate.py https://…/faq.html → ok FAQPage (WARN retired is expected)"
+      "verify": "validate.py https://…/faq.html → ok FAQPage (WARN retired is expected)",
+      "seo_effect": "none"
     },
     {
       "id": "seo-h1-multiple-services",
@@ -127,7 +129,8 @@
       "owner": "human",
       "effort": "S",
       "impact": "M",
-      "priority": "medium"
+      "priority": "medium",
+      "seo_effect": "indirect"
     }
   ],
   "strengths": [

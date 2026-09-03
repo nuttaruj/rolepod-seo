@@ -27,10 +27,10 @@ the shape of the answer on the page; GEO is about trust and access.
 
 | Check | Threshold | Evidence | Severity |
 |---|---|---|---|
-| `FAQPage` where FAQ is visible | `faq_visible` true → `faq_schema` true | both flags + one Q/A | **low / info** — Google retired FAQ rich results for all sites on 2026-05-07; the block is a structural signal for answer engines only. Never write "missing FAQ schema" as a defect, never promise a SERP feature; `QAPage` for real user Q&A |
+| `FAQPage` where FAQ is visible | `faq_visible` true → `faq_schema` true | both flags + one Q/A | **low / info, `seo_effect: none`** — Google retired FAQ rich results for all sites on 2026-05-07; the block is a structural signal for answer engines only. Never write "missing FAQ schema" as a defect, never promise a SERP feature; `QAPage` for real user Q&A |
 | `FAQPage` matches visible text | every `Question.name` appears on the page | a mismatch, if any | medium (misleading markup) |
-| `HowTo` on procedural content | steps on the page = `HowToStep[]` | the block | low — no Google rich result since 2023-09-13; structural signal only |
-| `speakable` on key answers | `SpeakableSpecification` with `cssSelector` or `xpath` on the answer block | the block | low |
+| `HowTo` on procedural content | steps on the page = `HowToStep[]` | the block | low, `seo_effect: none` — no Google rich result since 2023-09-13; structural signal only |
+| `speakable` on key answers | `SpeakableSpecification` with `cssSelector` or `xpath` on the answer block | the block | low, `seo_effect: none` |
 | `Question` count sane | no schema for FAQs that are not on the page | the block vs the page | high (misleading markup) |
 
 ## Voice and local

@@ -13,7 +13,7 @@ Artifact are rendered from it.
 | GEO | <score>/10 · <band> — <one-line driver> |
 | AEO | <score>/10 · <band> — <one-line driver> |
 | Top priorities | 1. <issue> (<page>) · 2. <issue> (<page>) · 3. <issue> (<page>) |
-| Quick wins | <up to 3 one-file changes, page named> |
+| Quick wins | <up to 3 one-file changes, page named — never a `seo_effect: none` item> |
 | Biggest strength | <what, with the page> |
 | Since last audit | <the render_report --previous line: "SEO 6→7 · fixed 3 · new 1 · still open 9" — or omit the row> |
 | Report | reports/seo-audit-<host>-<date>.md · .json · <artifact link or "—"> |
@@ -56,7 +56,7 @@ Could not fetch: <url (status)>, … — or "none".
 ## SEO findings
 | Signal | Finding | Evidence | Page | Status |
 |---|---|---|---|---|
-<one row per finding; Status = fail | warn | pass | not-assessed>
+<one row per finding, ordered direct → indirect → none; Status = fail | warn | pass | not-assessed; a `none` row says "no effect on Google Search" in the Finding cell>
 
 ## GEO findings
 <same table; AI-bot policy appears here as a decision with the trade-offs>
@@ -74,6 +74,9 @@ Could not fetch: <url (status)>, … — or "none".
 | Priority | Issue | Dimension | Effort | Impact | Owner | Exact change |
 |---|---|---|---|---|---|---|
 <Critical / High / Medium / Quick win · S/M/L · H/M/L · uiproof / wplab / frontend-developer / content-strategist / human · field + value, or the snippet>
+
+## No effect on Google Search (optional, listed last)
+<`seo_effect: none` items: signal · why no effect · optional change · page — never in the matrix or the roadmap>
 
 ## Not assessed
 | Signal | Needs | Installed? |
@@ -122,6 +125,7 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
       "effort": "S",
       "impact": "H",
       "priority": "critical",
+      "seo_effect": "direct",
       "verify": "collect.py --urls one.txt → canonical_ok = self",
       "leading_indicator": "Search Console: the post's own URL appears under Pages within 2 weeks"
     }
@@ -144,7 +148,14 @@ not-assessed. `severity`: critical | high | medium | low | info.
 frontend-developer | content-strategist | human. `effort`: S | M | L.
 `impact`: H | M | L. `priority`: critical | high | medium | quick-win.
 `id` is stable across runs of the same site: `<dimension>-<signal>-<slug>`.
-`verify` and `leading_indicator` are optional per finding (see
+`seo_effect`: `direct` (changes crawling / indexing / ranking in Google
+Search) | `indirect` (trust and answer-structure signals, AI engines) |
+`none` (no effect on Google Search — FAQ / HowTo rich results retired,
+`llms.txt` ignored, `speakable`). **Set it on every finding.** The report
+orders by effect and lists `none` items last under "No effect on Google
+Search — optional"; they never enter the priority matrix, the roadmap,
+the quick wins or the chat summary. The markdown report follows the same
+order. `verify` and `leading_indicator` are optional per finding (see
 `docs/report-schema.md`). `summary` (optional) is the executive summary; `status_label` (optional,
 derived from the score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical) is
 what the HTML cover shows — the renderer computes it when absent.
