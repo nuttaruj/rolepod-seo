@@ -49,7 +49,9 @@ ceiling `xhigh`).
 
 Home → `Organization` (or `LocalBusiness` subtype) + `WebSite`. Inner
 page → `BreadcrumbList` + its type: post → `Article` with `author` →
-`Person`; product → `Product`; FAQ → `FAQPage`; procedure → `HowTo`;
+`Person`; product → `Product`; FAQ → `FAQPage` only as a structural signal
+(Google shows no FAQ rich result since 2026-05-07; say so, never promise a
+SERP feature); real user Q&A → `QAPage`; procedure → `HowTo` (same caveat);
 service page → `Service`; contact of a local business → `LocalBusiness`
 with hours. Full table: `references/schema-minimums.md`.
 
@@ -104,16 +106,22 @@ Re-run step 4 against the live URL; `/seo-audit` Tier B (`audit_seo`
 1. Nothing in the markup that a reader cannot see on the page.
 2. No `AggregateRating` / `Review` on the site's own `Organization` or
    `LocalBusiness`; no ratings without visible reviews.
-3. `FAQPage` mirrors the visible FAQ exactly; `HowTo` only for real steps.
+3. `FAQPage` mirrors the visible FAQ exactly and is offered as optional
+   (no Google benefit); `HowTo` only for real steps, same caveat.
 4. Rich-result eligibility is Google's call and changes; say "eligible
    per current documentation", never "will show".
 5. One block per page per type; merge into `@graph` rather than duplicate.
 
 ## Examples
 
-- `Add FAQ schema to /faq` → six visible Q/A pairs copied verbatim into
-  `FAQPage.mainEntity`, validated `ok`, hand-off to wplab
-  (RankMath FAQ block) or a JSON-LD component.
+- `Add FAQ schema to /faq` → first the caveat (Google retired FAQ rich
+  results for all sites on 2026-05-07; the block only gives other answer
+  engines a clean Q/A structure), then, if the user still wants it, six
+  visible Q/A pairs copied verbatim into `FAQPage.mainEntity`, validated
+  (`WARN retired` is expected), hand-off to wplab or a JSON-LD component.
+- `Add LocalBusiness schema to /contact` → `Plumber` subtype from the
+  visible NAP, hours and service area; validated `ok`; hand-off names the
+  file / plugin screen.
 - `Our blog posts have no author schema` → `Article.author` → `Person`
   with `name` + `url` to the author page (created if missing — a task for
   content-strategist), one block per post template.

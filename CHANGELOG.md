@@ -6,6 +6,15 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-09-03
+
+### Changed
+
+- Docs only: the last examples that still read as "add FAQ schema for
+  Google" now carry the 2026-05-07 caveat (`/seo-schema` types table,
+  rules and examples; `/seo-page-brief` example; README skills table).
+  Behaviour was already correct since 0.4.0.
+
 ## [0.5.0] — 2026-09-03
 
 ### Added

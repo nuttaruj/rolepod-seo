@@ -111,7 +111,7 @@ with the path and the verification columns (`word_count`,
 - `Rewrite /pricing for "emergency plumber cost leeds"` → commercial
   intent, answer block with the £95 call-out fact, H2s for cost / what's
   included / weekend / how the fixed quote works, comparison table,
-  `Service` + `FAQPage` schema, links from home and FAQ.
+  `Service` schema, links from home and FAQ.
 - `New page: boiler fault codes` → informational, answer block defining
   fault codes, H2 per brand, table of codes, `Article` with author, links
   from the services page and the burst-pipe post.

@@ -16,7 +16,8 @@ JSON-LD; `/seo-page-brief` briefs the copy. The lenses:
   E-E-A-T surface, entity clarity, citation-friendly structure, rich
   schema, AI-bot crawl policy reported as a decision.
 - **AEO** — answer engines (featured snippets, People Also Ask, voice):
-  direct-answer blocks, question headings, FAQ / HowTo / Speakable schema,
+  direct-answer blocks, question headings, FAQ / HowTo / Speakable schema
+  as structural signals only (Google retired their rich results),
   local signals.
 
 Phase 1 is **skills only** — no MCP server, no hooks, zero per-session
@@ -28,7 +29,7 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 |---|---|---|
 | `/seo-audit` | "audit example.com for SEO and AI search" | Quick / Full audit, three scores with evidence, markdown report + JSON sidecar, priority matrix |
 | `/seo-fix-plan` | "apply the audit" | findings in dependency order, one block per item with owner, exact payload / snippet / brief and a verification command; runs approved WordPress writes through rolepod-wplab |
-| `/seo-schema` | "add FAQ schema to /faq" | JSON-LD from facts on the page, validated (`scripts/validate.py`, stdlib), placement hand-off per platform |
+| `/seo-schema` | "add LocalBusiness schema to /contact" | JSON-LD from facts on the page, validated (`scripts/validate.py`, stdlib; warns on types whose Google rich result was retired, e.g. `FAQPage`), placement hand-off per platform |
 | `/seo-page-brief` | "rewrite /pricing for '<query>'" | intent, 40–60-word answer block, question outline, entities and proof, schema, internal links — for content-strategist |
 
 ## What you get from an audit
