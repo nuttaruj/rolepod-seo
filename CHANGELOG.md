@@ -6,6 +6,14 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-09-03
+
+### Changed
+
+- Report page background is white and the report is a single light theme
+  on purpose (no dark-mode overrides), so it no longer turns dark inside a
+  dark viewer; cards keep a 1 px border on the white page. Hero unchanged.
+
 ## [0.7.1] — 2026-09-03
 
 ### Fixed

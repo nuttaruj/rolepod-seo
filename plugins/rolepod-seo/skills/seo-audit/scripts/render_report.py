@@ -13,8 +13,9 @@ take over. A "Save as PDF" button opens the browser's print dialog; there
 is no PDF library, no download link, no automation.
 
 --artifact writes the fragment form the Claude Code Artifact tool expects
-(<title> + <style> + content, no <html>/<head>/<body>), light / dark
-tokens, host as the title.
+(<title> + <style> + content, no <html>/<head>/<body>), host as the title.
+The report is a single light theme on purpose — white page, dark hero —
+so it reads the same inside a dark viewer.
 
 --previous adds a "Since last audit" block (score deltas, fixed / new /
 still-open findings matched by id) and prints the same one-liner to
@@ -200,20 +201,13 @@ def headline_for(doc: dict, findings: list[dict]) -> str:
 
 # ---------------------------------------------------------------- CSS
 CSS = """
-:root{--bg:#F5F4FB;--ink:#14131F;--ink2:#221F3C;--body:#3B3853;--muted:#5A5775;--muted2:#6E6B85;--faint:#918EA8;--faint2:#B4B1C6;
+:root{color-scheme:light;--bg:#FFFFFF;--ink:#14131F;--ink2:#221F3C;--body:#3B3853;--muted:#5A5775;--muted2:#6E6B85;--faint:#918EA8;--faint2:#B4B1C6;
 --line:#E2E0F0;--card:#FFFFFF;--panel:#F7F6FD;--panel-indigo:#F1EFFE;--panel-indigo-ink:#221F3C;--nav:#4A4760;--nav-hover:#EBE9FA;
 --indigo:#5B4BFF;--indigo-soft:#7C6BFF;--coral:#FF5C39;--coral-soft:#FF8F72;--lime:#C6F24E;--lime-ink:#6E8C10;--lime-bg:#EDF8CF;--lime-bg-ink:#5F7C0B;
 --amber:#FFC93D;--amber-bg:#FFEEB8;--amber-ink:#7A5B00;--amber-ink2:#6B5A24;--amber-body:#3E3520;--amber-soft-bg:#FFF6DC;
 --green-ink:#1F7A52;--green-bg:#E6F6EC;--red-ink:#C23A16;--red-bg:#FFEDE7;--high-bg:#FFD9CC;--high-ink:#8A2D12;
 --dark:#1A1830;--dark2:#221F3C;--dark3:#2C2A4A;--dark-ring:#35315C;--dark-muted:#9C97C4;--dark-text:#DAD7EC;--dark-label:#B7B3D6;--dark-green:#8FE3B8;--dark-coral:#FF8F72}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14131F;--ink:#F1F0F8;--ink2:#E8E6F5;--body:#D5D2E6;--muted:#B4B1C6;--muted2:#9C97C4;--faint:#7E7A99;--faint2:#66627F;
---line:#2E2B48;--card:#1E1C33;--panel:#262340;--panel-indigo:#2A2750;--panel-indigo-ink:#E8E6F5;--nav:#B4B1C6;--nav-hover:#262340;
---lime-ink:#C6F24E;--lime-bg:#26301A;--lime-bg-ink:#C6F24E;--amber-bg:#3A2F10;--amber-ink:#FFC93D;--amber-ink2:#E6C77A;--amber-body:#E8E1CC;--amber-soft-bg:#2F2810;
---green-ink:#8FE3B8;--green-bg:#173626;--red-ink:#FF8F72;--red-bg:#3A1A14;--high-bg:#4A2114;--high-ink:#FFB199}}
-:root[data-theme="dark"]{--bg:#14131F;--ink:#F1F0F8;--ink2:#E8E6F5;--body:#D5D2E6;--muted:#B4B1C6;--muted2:#9C97C4;--faint:#7E7A99;--faint2:#66627F;
---line:#2E2B48;--card:#1E1C33;--panel:#262340;--panel-indigo:#2A2750;--panel-indigo-ink:#E8E6F5;--nav:#B4B1C6;--nav-hover:#262340;
---lime-ink:#C6F24E;--lime-bg:#26301A;--lime-bg-ink:#C6F24E;--amber-bg:#3A2F10;--amber-ink:#FFC93D;--amber-ink2:#E6C77A;--amber-body:#E8E1CC;--amber-soft-bg:#2F2810;
---green-ink:#8FE3B8;--green-bg:#173626;--red-ink:#FF8F72;--red-bg:#3A1A14;--high-bg:#4A2114;--high-ink:#FFB199}
+/* single light theme on purpose: the report stays white in a dark viewer too */
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'Instrument Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .mono,code,.evidence-text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -229,7 +223,7 @@ a{color:inherit}
 .side nav{display:grid;gap:2px;border-top:1px solid var(--line);padding-top:18px}
 .side nav a{font-size:13.5px;color:var(--nav);text-decoration:none;padding:9px 10px;border-radius:8px;display:flex;gap:10px}
 .side nav a b{font-weight:600;color:var(--faint);font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.06em;min-width:22px}
-.side nav a:hover{background:var(--nav-hover);color:var(--ink)}
+.side nav a:hover{background:var(--panel);color:var(--ink)}
 .print-btn{appearance:none;border:none;background:var(--lime);color:#14131F;border-radius:10px;padding:13px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;text-align:left;width:100%}
 .print-btn:hover{filter:brightness(.96)}
 .print-btn:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
@@ -261,6 +255,7 @@ section{padding:52px 0 0}
 .lead{margin:0;font-size:19px;line-height:1.45;letter-spacing:-.01em;color:var(--ink2);text-wrap:pretty}
 .after{margin:14px 0 0;font-size:14.5px;color:var(--muted);line-height:1.6;max-width:720px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.card,.fcard,.mcard,.phase,.tablewrap,.gcard,.since,.decision{border:1px solid var(--line)}
 .card{background:var(--card);border-radius:18px;padding:24px 26px 26px}
 .card.tight{padding:20px 22px}
 .label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--faint)}
@@ -373,7 +368,7 @@ tr:last-child td{border-bottom:0}
 @media (max-width:560px){.scores,.phases,.grid3,.bands{grid-template-columns:1fr}}
 @page{margin:14mm}
 @media print{
-  :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#FFFFFF;--ink:#14131F;--ink2:#221F3C;--body:#3B3853;--muted:#5A5775;--muted2:#6E6B85;--faint:#918EA8;--faint2:#B4B1C6;--line:#E2E0F0;--card:#F7F6FD;--panel:#F1F0F8;--panel-indigo:#F1EFFE;--panel-indigo-ink:#221F3C;--lime-ink:#6E8C10;--lime-bg:#EDF8CF;--lime-bg-ink:#5F7C0B;--amber-bg:#FFEEB8;--amber-ink:#7A5B00;--amber-ink2:#6B5A24;--amber-body:#3E3520;--amber-soft-bg:#FFF6DC;--green-ink:#1F7A52;--green-bg:#E6F6EC;--red-ink:#C23A16;--red-bg:#FFEDE7;--high-bg:#FFD9CC;--high-ink:#8A2D12}
+  :root{--bg:#FFFFFF;--ink:#14131F;--ink2:#221F3C;--body:#3B3853;--muted:#5A5775;--muted2:#6E6B85;--faint:#918EA8;--faint2:#B4B1C6;--line:#E2E0F0;--card:#F7F6FD;--panel:#F1F0F8;--panel-indigo:#F1EFFE;--panel-indigo-ink:#221F3C;--lime-ink:#6E8C10;--lime-bg:#EDF8CF;--lime-bg-ink:#5F7C0B;--amber-bg:#FFEEB8;--amber-ink:#7A5B00;--amber-ink2:#6B5A24;--amber-body:#3E3520;--amber-soft-bg:#FFF6DC;--green-ink:#1F7A52;--green-bg:#E6F6EC;--red-ink:#C23A16;--red-bg:#FFEDE7;--high-bg:#FFD9CC;--high-ink:#8A2D12}
   body{font-size:12px;background:#fff;color:#14131F}
   .no-print,.toolbar{display:none!important}
   .page{display:block;padding:0;max-width:none}
