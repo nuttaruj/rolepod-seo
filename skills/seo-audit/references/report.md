@@ -153,5 +153,8 @@ from scores + first fix), pages audited (+ title / words / schema with
 Page · Status chip), priority matrix (priority chip · Issue · Dim · Effort ·
 Impact · Owner · Exact change), decisions for the owner (`info` + `human`
 findings), what's working, not assessed, glossary (Full mode). Inline CSS
-only, light / dark tokens, a small `@media print` block. `--artifact`
+only, light / dark tokens, a "Save as PDF" button (`window.print()` only —
+no download link, no PDF library; the Claude Artifact viewer blocks
+page-initiated downloads and may restrict print, hence the ⌘P / Ctrl+P
+hint next to it) and an `@media print` block. `--artifact`
 emits the fragment the Claude Code Artifact tool expects, title = host.

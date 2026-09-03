@@ -46,7 +46,8 @@ ceiling `xhigh`): this skill adds procedure only.
 4. **HTML report** — `reports/seo-audit-<host>-<YYYY-MM-DD>.html` rendered
    from the sidecar by `scripts/render_report.py` (stdlib, self-contained:
    navy cover with three colored score cards, findings tables, colored
-   priority matrix). This is the visual deliverable on every CLI.
+   priority matrix, a Save as PDF button that opens the browser's print
+   dialog). This is the visual deliverable on every CLI.
 5. **Artifact** — on Claude Code, publish the `--artifact` form of that
    HTML as a private page and give the link. Skip silently elsewhere.
    No docx / PDF export (owner decision, see docs/decisions.md).

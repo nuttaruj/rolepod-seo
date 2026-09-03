@@ -5,8 +5,11 @@ Usage:
   render_report.py <sidecar.json> [--out FILE] [--collect collect.json] [--artifact]
 
 Default output: a complete HTML document (inline CSS, no external assets)
-next to the sidecar as seo-audit-<host>-<date>.html. A small @media print
-block keeps the cover colours and avoids page breaks inside tables.
+next to the sidecar as seo-audit-<host>-<date>.html. A "Save as PDF"
+button calls window.print() — the browser's print dialog makes the PDF;
+there is no PDF library, no download link, no automation. The @media print
+block hides the button, forces light colours, keeps card / chip colours and
+breaks pages before the findings and the matrix.
 
 --artifact writes the fragment form the Claude Code Artifact tool expects
 (<title> + <style> + content, no <html>/<head>/<body>), with light/dark
@@ -115,13 +118,21 @@ ul.plain{padding-left:20px}
 dl.gloss dt{font-weight:600;margin-top:8px}
 dl.gloss dd{margin:0 0 4px}
 .foot{margin-top:40px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.toolbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:12px 0 0;font-size:13px;color:var(--muted)}
+.print-btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}
+.print-btn:hover{border-color:var(--navy)}
+.print-btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 @page{margin:16mm}
 @media print{
-  body{font-size:12px}
-  .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0 0 24px;border-radius:8px}
-  .card,.chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  section,table,tr{page-break-inside:avoid;break-inside:avoid}
-  h2{page-break-after:avoid;break-after:avoid}
+  :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#ffffff;--fg:#1c1c1e;--muted:#5c6370;--card:#f5f6f8;--line:#e1e3e8;
+    --good:#1e8e3e;--good-bg:#e6f4ea;--warn:#b26a00;--warn-bg:#fff4e0;--bad:#c5221f;--bad-bg:#fce8e6;--na:#5c6370;--na-bg:#eceef1}
+  body{font-size:12px;background:#fff;color:#1c1c1e}
+  .no-print,.toolbar{display:none!important}
+  .cover,.card,.chip,.card .status{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cover{margin:0 0 24px;border-radius:8px}
+  #seo,#matrix{break-before:page;page-break-before:always}
+  tr,.card{page-break-inside:avoid;break-inside:avoid}
+  h2,h3{page-break-after:avoid;break-after:avoid}
   .tablewrap{overflow:visible;border:0}
   a{color:inherit;text-decoration:none}
 }
@@ -145,6 +156,9 @@ def render(doc: dict, collect: dict | None = None) -> tuple[str, str]:
             facts[p.get("url")] = p
 
     out: list[str] = []
+    out.append('<div class="toolbar no-print"><span>Save this report as a PDF with the browser\'s print dialog</span>'
+               '<button type="button" class="print-btn" onclick="window.print()">Save as PDF</button>'
+               '<span>or press ⌘P / Ctrl+P → Save as PDF</span></div>')
     # cover
     tier_txt = "Tier A fetch" + (" · Tier B rolepod-uiproof" if tiers.get("b") else "") + (" · connectors" if tiers.get("c") else "")
     out.append('<header class="cover">')

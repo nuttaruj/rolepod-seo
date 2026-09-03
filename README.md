@@ -37,11 +37,12 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 |---|---|---|
 | Chat | summary + priority matrix | one table (pages · date · three scores with band · top 3 priorities · biggest strength) and the matrix with colored priority dots (🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win) |
 | Files | markdown report + JSON sidecar | `reports/seo-audit-<host>-<date>.md` (findings tables with evidence, priority matrix, what's working, glossary) and `.json` with a stable, additive schema ([docs/report-schema.md](docs/report-schema.md)) that the other skills and outside tools consume |
-| Visual | HTML report | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: navy cover with three score cards colored by band, findings tables with colored status cells, priority matrix with colored chips, decisions, what's working, not assessed, glossary. Self-contained, no external assets, light and dark |
+| Visual | HTML report → Save as PDF (browser print) | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: navy cover with three score cards colored by band, findings tables with colored status cells, priority matrix with colored chips, decisions, what's working, not assessed, glossary. Self-contained, no external assets, light and dark. A "Save as PDF" button opens the browser's print dialog (or ⌘P / Ctrl+P) |
 | Claude Code | Artifact | the same HTML published as a private page; share it from the page if you want |
 
-No docx or PDF tooling: the owner chose HTML + Artifact as the visual
-deliverable ([docs/decisions.md](docs/decisions.md)).
+No docx export and no PDF tooling: the owner chose HTML + Artifact as the
+visual deliverable, with the browser's own print dialog for a PDF copy
+([docs/decisions.md](docs/decisions.md)).
 
 Every finding quotes the page and the tag. "Missing" is claimed only after
 every fetched page was checked. Anything the plain fetch cannot see (Core

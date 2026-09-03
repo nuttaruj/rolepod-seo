@@ -6,6 +6,22 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-09-03
+
+### Added
+
+- **Save as PDF** button in the HTML report — calls `window.print()` only;
+  the browser's print dialog makes the PDF. Next to it: "or press ⌘P /
+  Ctrl+P → Save as PDF", because the Claude Artifact viewer blocks
+  page-initiated downloads and may restrict print. No download link, no
+  blob save, no PDF library.
+- Print rules: toolbar hidden, light tokens forced in both themes, card /
+  chip colours kept (`print-color-adjust: exact`), page breaks before the
+  findings and the priority matrix, no breaks inside rows or cards.
+- Test: the report carries exactly one `window.print()` call, the
+  keyboard hint and the print rules, and no `download=`, `blob:`, jsPDF
+  or `<script>`.
+
 ## [0.3.0] — 2026-09-03
 
 ### Added

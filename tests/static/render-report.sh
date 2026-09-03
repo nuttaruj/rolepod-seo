@@ -39,8 +39,11 @@ check('class="chip p-critical">Critical<' in doc and 'class="chip p-quick-win">Q
 check('class="chip fail">Fail<' in doc and 'class="chip pass">Pass<' in doc, "status chips rendered")
 check("<th>Exact change</th>" in doc and "<th>Owner</th>" in doc, "matrix columns")
 check("ai-bot-policy" in doc and 'id="decisions"' in doc, "info/human finding lands in Decisions")
-for needle in ("<script", "javascript:"):
+for needle in ("<script", "javascript:", "download=", "blob:", "jspdf"):
     check(needle not in doc.lower(), f"no {needle} in the report")
+check('onclick="window.print()"' in doc and "Save as PDF" in doc and "Ctrl+P" in doc, "Save as PDF button (window.print) + keyboard fallback")
+check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page" in doc and "print-color-adjust:exact" in doc, "print rules: hide toolbar, page breaks, exact colors")
+check(doc.count("window.print()") == 1, "exactly one print call, no other JS")
 sys.exit(bad)
 PY
-echo "  ✓ render: document + artifact forms, print CSS, tokens, no external assets, chips"
+echo "  ✓ render: document + artifact forms, print CSS + Save as PDF button, tokens, no external assets, chips"
