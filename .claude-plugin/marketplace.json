@@ -11,7 +11,7 @@
       "name": "rolepod-seo",
       "source": "./plugins/rolepod-seo",
       "description": "Four skills: /seo-audit (Quick or Full audit, 1–10 scores with quoted evidence, markdown report + JSON sidecar + self-contained HTML report with score cards and a colored priority matrix, published as the Artifact on Claude Code), /seo-fix-plan (findings → hand-offs per owner in dependency order, exact payloads for rolepod-wplab / frontend-developer / content-strategist), /seo-schema (JSON-LD per page type from facts on the page, required-property validation, placement hand-off), /seo-page-brief (intent, 40–60-word answer block, question headings, entities, schema, internal links — for content-strategist). Every finding quotes the page and the tag. Calls rolepod-uiproof for rendered-DOM / CWV when installed, hands WordPress writes to rolepod-wplab and copy to the rolepod content-strategist. No MCP server, no hooks.",
-      "version": "0.9.2",
+      "version": "0.9.3",
       "author": {
         "name": "nuttaruj"
       },

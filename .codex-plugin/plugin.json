@@ -1,6 +1,6 @@
 {
   "name": "rolepod-seo",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "SEO + GEO + AEO site audit for AI coding agents — Quick or Full audit of a site across classic search (SEO), generative engines (GEO) and answer engines (AEO), scored 1–10 per dimension with quoted evidence, ending in a prioritized fix plan that hands off to rolepod-uiproof (rendered DOM, Core Web Vitals), rolepod-wplab (WordPress writes) and the rolepod parent roles. Four skills (/seo-audit, /seo-fix-plan, /seo-schema, /seo-page-brief). Skills only — no MCP server, no hooks.",
   "author": {
     "name": "nuttaruj",

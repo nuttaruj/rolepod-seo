@@ -385,7 +385,8 @@ tr:last-child td{border-bottom:0}
 .since .up{color:var(--green-ink)}.since .down{color:var(--red-ink)}
 .since .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
 .since ul{margin:8px 0 0;padding-left:18px;font:400 13.5px/1.55 'Instrument Sans',sans-serif;color:var(--body)}
-.foot{margin-top:60px;font:400 11.5px/1.7 'JetBrains Mono',monospace;color:var(--faint)}
+.foot{margin-top:60px;font:400 11.5px/1.7 'JetBrains Mono',monospace;color:var(--faint);word-break:break-all}
+.printhead{display:none}
 @media (max-width:960px){.page{grid-template-columns:1fr;gap:0;padding:0 18px}.side{padding:24px 0 8px}.side .stick{position:static}.side nav{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 .scores,.phases,.grid3,.bands{grid-template-columns:1fr 1fr}.two,.panels,.grid2,.gloss,.ongoing .grid,.since .cols{grid-template-columns:1fr}.mcard{grid-template-columns:1fr}.hero{padding:28px 24px}.hero h1{font-size:30px}}
 @media (max-width:560px){.scores,.phases,.grid3,.bands{grid-template-columns:1fr}}
@@ -394,6 +395,7 @@ tr:last-child td{border-bottom:0}
   :root{--bg:#FFFFFF}
   html,body{font-size:12px;background:#fff;color:#14131F}
   .no-print,.toolbar{display:none!important}
+  .printhead{display:flex;justify-content:space-between;gap:16px;font:500 10.5px/1.4 'JetBrains Mono',monospace;color:var(--muted2);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);word-break:break-all}
   .page{display:block;padding:0;max-width:none}
   main{max-width:none;padding:0}
   /* findings and the action list start clean pages; everything else flows, header glued to its first card */
@@ -519,6 +521,8 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
 
     sections: list[tuple[str, str]] = []  # (id, label) for nav
     out: list[str] = []
+    base_url = site.get("base_url") or host
+    out.append(f'<div class="printhead"><span>SEO · GEO · AEO audit — {esc(base_url)}</span><span>{esc(mode)} mode · {esc(date)}</span></div>')
 
     # ---- hero
     chips = [f'<span class="lime">{esc(col.get("pages_fetched", "?"))} of {esc(col.get("pages_selected", "?"))} pages fetched</span>',
@@ -770,7 +774,7 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
         cards = [f'<div class="gcard"><div class="term">{esc(t)}</div><div class="def">{esc(d_)}</div></div>' for t, d_ in GLOSSARY]
         out.append(f'<section id="glossary"><div class="keep">{shead(n, "Glossary")}<div class="gloss">' + "".join(cards[:2]) + "</div></div>" + (f'<div class="gloss" style="margin-top:12px">{"".join(cards[2:])}</div>' if len(cards) > 2 else "") + "</section>")
 
-    out.append(f'<p class="foot">Generated {esc(doc.get("generated_at", ""))} · schema {esc(doc.get("schema", ""))} v{esc(doc.get("schema_version", ""))} · collector: {esc(", ".join(col.get("tools", [])))}</p>')
+    out.append(f'<p class="foot">{esc(base_url)} · {esc(mode)} mode · generated {esc(doc.get("generated_at", ""))} · schema {esc(doc.get("schema", ""))} v{esc(doc.get("schema_version", ""))} · collector: {esc(", ".join(col.get("tools", [])))}</p>')
 
     # ---- sidebar
     nav = "".join(f'<a href="#{sid}"><b>{i + 1:02d}</b>{esc(lab)}</a>' for i, (sid, lab) in enumerate(sections))

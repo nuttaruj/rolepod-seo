@@ -6,6 +6,14 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.9.3] — 2026-09-04
+
+### Fixed
+
+- The PDF / print now states what was audited: a print-only header line
+  with the audited URL, mode and date (the sidebar that shows them on
+  screen is hidden in print), and the footer carries the URL too.
+
 ## [0.9.2] — 2026-09-04
 
 ### Fixed
