@@ -389,26 +389,50 @@ tr:last-child td{border-bottom:0}
 @media (max-width:960px){.page{grid-template-columns:1fr;gap:0;padding:0 18px}.side{padding:24px 0 8px}.side .stick{position:static}.side nav{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 .scores,.phases,.grid3,.bands{grid-template-columns:1fr 1fr}.two,.panels,.grid2,.gloss,.ongoing .grid,.since .cols{grid-template-columns:1fr}.mcard{grid-template-columns:1fr}.hero{padding:28px 24px}.hero h1{font-size:30px}}
 @media (max-width:560px){.scores,.phases,.grid3,.bands{grid-template-columns:1fr}}
-@page{margin:14mm}
+@page{size:A4;margin:12mm 12mm 14mm}
 @media print{
   :root{--bg:#FFFFFF}
-  body{font-size:12px;background:#fff;color:#14131F}
+  html,body{font-size:12px;background:#fff;color:#14131F}
   .no-print,.toolbar{display:none!important}
   .page{display:block;padding:0;max-width:none}
   main{max-width:none;padding:0}
+  /* findings and the action list start clean pages; everything else flows, header glued to its first card */
+  #findings,#matrix{break-before:page;page-break-before:always}
+  #findings>section{padding:0 0 18px}
+  .keep,#pages,#roadmap .keep,.two{break-inside:avoid;page-break-inside:avoid}
+  .mcard{grid-template-columns:120px 1fr 170px;gap:16px}
+  .mcard .meta{font-size:10.5px}
+  .gloss{grid-template-columns:repeat(3,1fr)!important;gap:10px}
+  .gcard{padding:12px 14px}
+  #findings>section{padding:0 0 12px}
+  .also ul{gap:6px}
+  .dimhead{margin:18px 0 10px}
+  thead{display:table-header-group}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  .card,.fcard,.mcard,.phase,.wcard,.ncard{padding:16px 18px 18px}
+  .panels{gap:14px;margin-top:12px}
+  .panel{padding:12px 14px}
+  .stack{gap:10px}
+  .two{gap:12px;margin-top:16px}
+  .ongoing{padding:18px 20px 20px;margin-top:10px}
+  .decision{padding:18px 20px 20px;margin-bottom:10px}
+  .lead{font-size:16px;line-height:1.5}
+  .after{font-size:13px}
+  .foot{margin-top:24px}
   .hero,.score-card,.ring,.ring>div,.chip,.chips span,.ongoing,.band,.decision,.dimhead .pill,.phase .when i,.status,.panel,.card,.fcard,.mcard,.phase,.tablewrap,.gcard{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .card,.fcard,.mcard,.phase,.tablewrap,.gcard,.since,.wcard{border:1px solid var(--line)}
-  .hero{border-radius:14px;padding:26px 24px}
-  .hero h1{font-size:26px}
+  .hero{border-radius:14px;padding:22px 22px 20px;break-inside:avoid;page-break-inside:avoid}
+  .hero h1{font-size:26px;margin-top:14px}
+  .scores{margin-top:18px}
+  .score-card{padding:14px 16px 16px}
+  .score-card .counts{margin-top:10px;padding-top:8px}
   .scores,.phases,.grid3{grid-template-columns:repeat(3,1fr)}
   .two,.panels,.grid2,.gloss,.ongoing .grid,.since .cols{grid-template-columns:1fr 1fr}
   .bands{grid-template-columns:repeat(5,1fr)}
-  .mcard{grid-template-columns:110px 1fr 180px}
-  #summary .two{break-inside:avoid;page-break-inside:avoid}
   section{padding:26px 0 0}
-  #findings,#matrix{break-before:page;page-break-before:always}
-  .fcard,.mcard,.phase,.card,.score-card,tr{page-break-inside:avoid;break-inside:avoid}
-  .shead,.dimhead{page-break-after:avoid;break-after:avoid}
+  .fcard,.mcard,.phase,.card,.score-card,.decision,.ongoing,.gcard,.since{page-break-inside:avoid;break-inside:avoid}
+  .shead,.dimhead,.bygroup{page-break-after:avoid;break-after:avoid}
+  #summary .lead,#summary .after{orphans:3;widows:3}
   .tablewrap{overflow:visible}
   a{text-decoration:none}
 }
@@ -614,10 +638,11 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
         none_rows = [f for f in optional if f.get("dimension") == d]
         c = status_counts(eff, d)
         dom = dominant_group(eff, d)
-        out.append(f'<section id="{d}" style="padding:0"><div class="dimhead"><span class="pill {d}">{DIM_NAME[d]}</span><span class="sub">{DIM_SUB[d]}' + (f" — group {esc(dom)}" if dom else "") + f'</span><span class="cnt">{c["fail"]} fail · {c["warn"]} warn · {c["pass"]} pass</span></div>')
+        out.append(f'<section id="{d}" style="padding:0"><div class="keep"><div class="dimhead"><span class="pill {d}">{DIM_NAME[d]}</span><span class="sub">{DIM_SUB[d]}' + (f" — group {esc(dom)}" if dom else "") + f'</span><span class="cnt">{c["fail"]} fail · {c["warn"]} warn · {c["pass"]} pass</span></div>')
         if group_counts(eff, d):
             out.append(f'<p class="bygroup">By group: {group_line(eff, d)}</p>')
         out.append('<div class="stack">')
+        first_card = True
         for f in sorted(rows, key=lambda f: (EFFECT_ORDER[effect_of(f)], PRIORITY_ORDER.get(f.get("priority"), 9), SEVERITY_ORDER.get(f.get("severity"), 9))):
             stt = f.get("status", "")
             e = effect_of(f)
@@ -626,6 +651,10 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
                        f'<span class="sev">{esc(f.get("severity"))} severity' + (f' · {EFFECT_LABEL["indirect"]}' if e == "indirect" else "") + f'</span><span class="path">{esc(path_of(f.get("page", "")))}</span></div>'
                        f'<div class="panels"><div class="panel"><div class="label">Evidence</div><div class="evidence-text">{esc(f.get("evidence"))}</div></div>'
                        f'<div class="panel indigo"><div class="label">{"Decision" if is_decision else "Fix"}</div><div class="body">{code_in(f.get("fix", ""))}</div></div></div></div>')
+            if first_card:
+                out.append("</div>")  # close .keep after the first card so header + first card stay on one page
+                first_card = False
+        keep_open = first_card  # still open when no finding card closed it
         also = [f'<li><span class="d {d}">◆</span><span>{esc(f.get("evidence") or f.get("signal"))}</span></li>' for f in passes]
         drivers = [x for x in scores.get(d, {}).get("drivers", []) if not any((f.get("signal") or "zzz").split("-")[0] in x.lower() and path_of(f.get("page", "")) in x for f in rows)]
         also += [f'<li><span class="d {d}">◆</span><span>{esc(x)}</span></li>' for x in drivers[:4]]
@@ -633,9 +662,14 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
             out.append('<div class="fcard"><div class="text" style="color:var(--faint)">No findings recorded for this dimension.</div></div>')
         if also:
             out.append(f'<div class="fcard also"><div class="label">Also observed</div><ul>{"".join(also)}</ul></div>')
+            if keep_open:
+                out.append("</div>")
+                keep_open = False
         if none_rows:
             out.append('<div class="fcard also" style="opacity:.8"><div class="label">Not affecting Google Search — listed in the optional section</div><ul>'
                        + "".join(f'<li><span class="d {d}">◇</span><span>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span> <span class="chip none">{EFFECT_LABEL["none"]}</span></span></li>' for f in none_rows) + "</ul></div>")
+        if keep_open:
+            out.append("</div>")  # nothing at all under the header: close .keep
         out.append("</div></section>")
     out.append("</section>")
 
@@ -662,13 +696,13 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
     # ---- 05 roadmap
     n += 1
     sections.append(("roadmap", "Roadmap"))
-    out.append(f'<section id="roadmap">{shead(n, "Roadmap")}<div class="phases">')
+    out.append(f'<section id="roadmap"><div class="keep">{shead(n, "Roadmap")}<div class="phases">')
     for when, title, key, blurb, cls in PHASES:
         wanted = set(key.split("+"))
         items = [f for f in matrix if f.get("priority") in wanted]
         out.append(f'<div class="phase {cls}"><div class="when"><i></i>{esc(when)}</div><div class="title">{esc(title)}</div><div class="blurb">{esc(blurb)}</div>'
                    + ('<ul>' + "".join(f'<li>{esc(f.get("signal"))} · <span class="mono">{esc(path_of(f.get("page", "")))}</span></li>' for f in items[:8]) + '</ul>' if items else '<ul><li class="mono" style="color:var(--faint2)">nothing in this phase</li></ul>') + "</div>")
-    out.append("</div>")
+    out.append("</div></div>")
     ongoing = [("decide", "Decide", f'{esc(f.get("signal"))} — {esc(f.get("fix"))}') for f in decisions]
     ongoing += [("prove", "Prove", f'{esc(x.get("signal"))} — needs {esc(x.get("needs"))}') for x in na_items]
     ongoing += [("watch", "Watch", esc(f.get("leading_indicator"))) for f in leading]
@@ -679,12 +713,14 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
     # ---- 06 owner calls and strengths
     n += 1
     sections.append(("owner", "Owner calls"))
-    out.append(f'<section id="owner">{shead(n, "Owner calls and strengths", f"{len(decisions)} decision{"s" if len(decisions) != 1 else ""} · {len(strengths)} working")}')
+    out.append(f'<section id="owner"><div class="keep">{shead(n, "Owner calls and strengths", f"{len(decisions)} decision{"s" if len(decisions) != 1 else ""} · {len(strengths)} working")}')
     out.append('<section id="decisions" style="padding:0">')
-    for f in decisions:
+    for i, f in enumerate(decisions):
         out.append(f'<div class="decision"><div class="label">Decision for the owner</div><div class="title">{esc(f.get("signal"))}</div><div class="ev">{esc(f.get("evidence"))}</div><div class="text">{esc(f.get("fix"))}</div></div>')
+        if i == 0:
+            out.append("</div>")  # header + first decision stay together
     if not decisions:
-        out.append('<div class="card tight" style="margin-bottom:14px"><div class="text" style="margin:0;color:var(--faint)">No decisions pending for the owner.</div></div>')
+        out.append('<div class="card tight" style="margin-bottom:14px"><div class="text" style="margin:0;color:var(--faint)">No decisions pending for the owner.</div></div></div>')
     out.append("</section>")
     out.append('<section id="strengths" style="padding:0">')
     if strengths:
@@ -698,36 +734,41 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
     if na_items:
         n += 1
         sections.append(("not-assessed", "Not assessed"))
-        out.append(f'<section id="not-assessed">{shead(n, "Not assessed", f"{len(na_items)} signal{"s" if len(na_items) != 1 else ""} need a tool")}<div class="grid3">'
-                   + "".join(f'<div class="card ncard"><div class="sig">{esc(x.get("signal"))}</div><div class="needs">{esc(x.get("needs"))}</div><div class="inst {"yes" if x.get("installed") else ""}">{"installed — run it" if x.get("installed") else "not installed"}</div></div>' for x in na_items) + "</div></section>")
+        out.append(f'<section id="not-assessed"><div class="keep">{shead(n, "Not assessed", f"{len(na_items)} signal{"s" if len(na_items) != 1 else ""} need a tool")}<div class="grid3">'
+                   + "".join(f'<div class="card ncard"><div class="sig">{esc(x.get("signal"))}</div><div class="needs">{esc(x.get("needs"))}</div><div class="inst {"yes" if x.get("installed") else ""}">{"installed — run it" if x.get("installed") else "not installed"}</div></div>' for x in na_items) + "</div></div></section>")
 
     # ---- 08 optional — no effect on Google Search, listed last on purpose
     if optional:
         n += 1
         sections.append(("optional", "No effect"))
-        out.append(f'<section id="optional" class="optional">{shead(n, "No effect on Google Search", "optional · listed last on purpose")}'
+        out.append(f'<section id="optional" class="optional"><div class="keep">{shead(n, "No effect on Google Search", "optional · listed last on purpose")}'
                    '<p class="after" style="margin:0 0 16px">These signals do not change crawling, indexing or ranking in Google Search (rich results retired, or the file is ignored). They may still help other answer engines. Do nothing here before the sections above are clean.</p><div class="stack">')
-        for f in optional:
+        for i, f in enumerate(optional):
             out.append(f'<div class="fcard"><div class="row"><span class="sig">{esc(f.get("signal"))}</span><span class="chip none">{EFFECT_LABEL["none"]}</span><span class="path">{esc(path_of(f.get("page", "")))}</span></div>'
                        f'<div class="panels"><div class="panel"><div class="label">Why no effect</div><div class="evidence-text">{esc(f.get("evidence"))}</div></div><div class="panel"><div class="label">Optional change</div><div class="body">{code_in(f.get("fix", ""))}</div></div></div></div>')
+            if i == 0:
+                out.append("</div>")
+        if not optional:
+            out.append("</div>")
         out.append("</div></section>")
 
     # ---- 09 method
     n += 1
     sections.append(("method", "Method"))
     tiers_used = ["plain fetch (collect.py)"] + (["rolepod-uiproof rendered DOM / CWV / a11y"] if tiers.get("b") else []) + (["connectors"] if tiers.get("c") else [])
-    out.append(f'<section id="method" class="method">{shead(n, "How to read the scores")}<div class="card"><p>'
+    out.append(f'<section id="method" class="method"><div class="keep">{shead(n, "How to read the scores")}<div class="card"><p>'
                'Each dimension is scored 1–10 from the checklist hit-rate, weighted by page role — home and money pages count more than posts, posts more than utility pages — and by site type when it was detected with high confidence. '
                'Every finding quotes the page and the tag; "missing" is claimed only after every fetched page was checked; anything the collection tier could not see is listed under Not assessed with the tool that would prove it. '
                f'Data tiers used: {esc(", ".join(tiers_used))}. Findings keep a stable id so the next audit can diff against this one. '
                'Findings are ordered by effect: what changes Google Search first, then indirect / AI-engine signals, then items marked "no effect on Google Search", which never enter the priority matrix or the roadmap.</p>'
-               '<div class="bands"><div class="band b1"><b>1–3</b><span>critical</span></div><div class="band b2"><b>4–5</b><span>below baseline</span></div><div class="band b3"><b>6–7</b><span>solid</span></div><div class="band b4"><b>8–9</b><span>strong</span></div><div class="band b5"><b>10</b><span>model</span></div></div></div></section>')
+               '<div class="bands"><div class="band b1"><b>1–3</b><span>critical</span></div><div class="band b2"><b>4–5</b><span>below baseline</span></div><div class="band b3"><b>6–7</b><span>solid</span></div><div class="band b4"><b>8–9</b><span>strong</span></div><div class="band b5"><b>10</b><span>model</span></div></div></div></div></section>')
 
     # ---- 10 glossary (Full mode)
     if mode == "full":
         n += 1
         sections.append(("glossary", "Glossary"))
-        out.append(f'<section id="glossary">{shead(n, "Glossary")}<div class="gloss">' + "".join(f'<div class="gcard"><div class="term">{esc(t)}</div><div class="def">{esc(d_)}</div></div>' for t, d_ in GLOSSARY) + "</div></section>")
+        cards = [f'<div class="gcard"><div class="term">{esc(t)}</div><div class="def">{esc(d_)}</div></div>' for t, d_ in GLOSSARY]
+        out.append(f'<section id="glossary"><div class="keep">{shead(n, "Glossary")}<div class="gloss">' + "".join(cards[:2]) + "</div></div>" + (f'<div class="gloss" style="margin-top:12px">{"".join(cards[2:])}</div>' if len(cards) > 2 else "") + "</section>")
 
     out.append(f'<p class="foot">Generated {esc(doc.get("generated_at", ""))} · schema {esc(doc.get("schema", ""))} v{esc(doc.get("schema_version", ""))} · collector: {esc(", ".join(col.get("tools", [])))}</p>')
 

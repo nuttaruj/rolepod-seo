@@ -6,6 +6,18 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.9.2] — 2026-09-04
+
+### Fixed
+
+- **PDF page fitting.** `@page` is A4 explicitly; Findings and the
+  Priority matrix start on fresh pages; every other section flows, with
+  the section header glued to its first card and no card, table row,
+  decision or roadmap card ever split across pages; the pages table
+  repeats its header row when it does break; print paddings are tighter
+  so a Quick audit lands on about eight A4 pages without content cut in
+  half. Glossary prints in three columns.
+
 ## [0.9.1] — 2026-09-04
 
 ### Fixed
