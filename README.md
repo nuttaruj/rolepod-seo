@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/rolepod-seo-banner.png" alt="Rolepod SEO — search optimization" width="100%"></p>
+
 # rolepod-seo
 
 SEO + GEO + AEO site audit skills for AI coding agents. A sibling of
