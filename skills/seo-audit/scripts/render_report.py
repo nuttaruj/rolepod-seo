@@ -298,7 +298,7 @@ tr:last-child td{border-bottom:0}
 .chip.p-quick-win{color:#14131F;background:var(--lime);padding:7px 10px}
 .chip.working{color:var(--green-ink);background:var(--green-bg);letter-spacing:.14em}
 .dimhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:34px 0 14px}
-.dimhead:first-child{margin-top:0}
+#findings>section:first-of-type>.dimhead{margin-top:0}
 .dimhead .pill{font:600 13px/1 'Instrument Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;border-radius:8px;padding:8px 11px;color:#FFFFFF}
 .dimhead .pill.seo{background:var(--lime-pill);color:#14131F}.dimhead .pill.geo{background:var(--indigo)}.dimhead .pill.aeo{background:var(--coral)}
 .dimhead .sub{font:400 14px/1 'Instrument Sans',sans-serif;color:var(--muted2)}

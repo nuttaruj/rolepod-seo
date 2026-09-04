@@ -6,6 +6,14 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-09-04
+
+### Fixed
+
+- GEO and AEO dimension headers lost their 34 px top margin (the
+  first-child rule matched every dimension section, not only the first);
+  they now sit clear of the card above, as in the design.
+
 ## [0.8.0] — 2026-09-04
 
 ### Changed

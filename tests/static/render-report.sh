@@ -54,6 +54,7 @@ check(not ext, f"no external requests at all — fonts are embedded (found {ext[
 check('class="chip p-critical">Critical<' in doc and 'class="chip p-quick-win">Quick win<' in doc, "priority chips rendered")
 check('class="chip fail">Fail<' in doc and 'class="label">Also observed</div>' in doc and 'class="chip working">Working<' in doc, "status chips + also-observed + working cards rendered")
 check(doc.count('class="mcard"') == 2 and "effort S · impact H" in doc, "matrix rendered as cards with effort / impact meta")
+check("#findings>section:first-of-type>.dimhead{margin-top:0}" in doc and ".dimhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:34px 0 14px}" in doc, "dimension headers keep 34px above them except the first")
 check("ai-bot-policy" in doc and 'id="decisions"' in doc, "info/human finding lands in Decisions")
 prevdoc = open(f"{out}/report.prev.html", encoding="utf-8").read()
 check('<section id="roadmap"' in doc and ">Unblock<" in doc and "Ongoing — decide, measure, re-audit" in doc, "roadmap phases derived from priorities")
