@@ -17,6 +17,8 @@ d["findings"].append(dict(id="seo-title-missing-about", dimension="seo", signal=
 json.dump(d, open(sys.argv[1] + "/previous.json", "w"))
 PY2
 prev_line=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --previous "$OUT/previous.json" --out "$OUT/report.prev.html" 2>&1 >/dev/null)
+printf '%%PDF-1.4\n%%fake minimal pdf for the embed test\n' > "$OUT/fake.pdf"
+python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --artifact --pdf "$OUT/fake.pdf" --out "$OUT/report.pdf.html" >/dev/null
 grep -q "since 2026-08-01: SEO 4→6, GEO 5→5, AEO 5→5 · fixed 1 · new 1 · still open 2" <<<"$prev_line" || { echo "  ✗ --previous one-liner: $prev_line"; exit 1; }
 python3 - "$OUT" <<'PY'
 import importlib.util, re, sys
@@ -83,11 +85,14 @@ for sig, want in (("canonical", "technical"), ("faq-schema", "schema"), ("answer
     check(r.signal_group(sig) == want, f"signal_group({sig!r}) = {r.signal_group(sig)} != {want}")
 check('id="since"' in prevdoc and ">Fixed</h3>" in prevdoc and ">New</h3>" in prevdoc, "since-last-audit block with --previous")
 check('id="since"' not in doc, "no since block without --previous")
-for needle in ("<script", "javascript:", "download=", "blob:", "jspdf"):
+for needle in ("<script src", "javascript:", "download=", "blob:", "jspdf"):
     check(needle not in doc.lower(), f"no {needle} in the report")
-check('onclick="window.print()"' in doc and "Save as PDF" in doc and "Ctrl+P" in doc, "Save as PDF button (window.print) + keyboard fallback")
+check(doc.count("<script") == 1 and 'id="pdf-btn"' in doc and "window.print()" in doc and "claude.use('downloads')" in doc and "Ctrl+P" in doc, "one inline script: Save as PDF via downloads capability, print fallback, keyboard hint")
+check(doc.count("window.print()") == 1, "exactly one print call")
+check('id="pdf-data"' not in doc, "no PDF embedded unless --pdf")
+pdfdoc = open(f"{out}/report.pdf.html", encoding="utf-8").read()
+check('<script type="application/pdf" id="pdf-data" data-filename="seo-audit-127.0.0.1-8765-2026-09-03.pdf">JVBERi0xLjQK' in pdfdoc, "--pdf embeds the PDF as base64 with the report filename")
 check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page" in doc and "print-color-adjust:exact" in doc, "print rules: hide toolbar, page breaks, exact colors")
-check(doc.count("window.print()") == 1, "exactly one print call, no other JS")
 sys.exit(bad)
 PY
 echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, tokens, no external assets"

@@ -21,6 +21,11 @@ so it reads the same inside a dark viewer.
 still-open findings matched by id) and prints the same one-liner to
 stderr for the chat summary.
 
+--pdf embeds the PDF that export_pdf.py made, so the Save-as-PDF button
+hands the viewer the real file through the Artifact "downloads"
+capability (the viewer sandbox blocks window.print()). Without it, or
+outside a viewer, the button falls back to the browser's print dialog.
+
 Everything else — headline, fix-first / quick-win cards, per-dimension
 cards, priority matrix, roadmap phases, owner calls, strengths, not
 assessed, the optional "no effect on Google Search" list — is derived
@@ -32,6 +37,7 @@ Stdlib only.
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
 import os
@@ -419,7 +425,39 @@ def code_in(text: str) -> str:
     return t
 
 
-def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> tuple[str, str]:
+BUTTON_JS = """<script>
+(function(){
+  var btn=document.getElementById('pdf-btn'),hint=document.getElementById('pdf-hint'),data=document.getElementById('pdf-data');
+  if(!btn){return;}
+  var inViewer=!!(window.claude&&typeof window.claude.use==='function');
+  function printPage(){try{window.print();}catch(e){}}
+  function pdfBlob(){var s=data.textContent.replace(/\\s+/g,''),bin=atob(s),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++){u[i]=bin.charCodeAt(i);}return new Blob([u]);}
+  if(data){btn.textContent='Save as PDF \u2193';if(hint){hint.textContent='Saves the PDF made from this report ('+Math.round(data.textContent.length*3/4/1024)+' KB).';}}
+  else if(inViewer&&hint){hint.textContent='No PDF attached to this artifact yet \u2014 ask Claude to run export_pdf.py and republish, or open the .html file and press \u2318P / Ctrl+P.';}
+  btn.addEventListener('click',function(){
+    if(!inViewer||!data){printPage();return;}
+    btn.disabled=true;
+    window.claude.use('downloads').then(function(dl){
+      if(!dl){printPage();return;}
+      return dl.save({filename:data.getAttribute('data-filename')||'seo-audit.pdf',data:pdfBlob()}).then(function(){if(hint){hint.textContent='Saved.';}});
+    }).catch(function(e){if(!(e&&e.code==='declined')&&hint){hint.textContent='Could not hand over the file ('+((e&&e.code)||'error')+'). Open the .html file and press \u2318P / Ctrl+P.';}}).then(function(){btn.disabled=false;});
+  });
+})();
+</script>"""
+
+
+def pdf_block(pdf_path: str | None, filename: str) -> str:
+    """The PDF made by export_pdf.py, embedded for the artifact's Save-as-PDF button (downloads capability)."""
+    if not pdf_path:
+        return ""
+    with open(pdf_path, "rb") as f:
+        raw = f.read()
+    if raw[:5] != b"%PDF-":
+        raise ValueError(f"{pdf_path} is not a PDF")
+    return f'<script type="application/pdf" id="pdf-data" data-filename="{esc(filename)}">{base64.b64encode(raw).decode("ascii")}</script>'
+
+
+def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf_path: str | None = None) -> tuple[str, str]:
     """Return (title, body_html). body_html is the whole .page grid (sidebar + main)."""
     site = doc.get("site", {})
     host = site.get("host", "site")
@@ -693,9 +731,10 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None) -> 
     side = (f'<aside class="side no-print"><div class="stick"><div><div class="dots"><span></span><span></span><span></span></div>'
             f'<div class="host">{esc(host)}</div><div class="sub">SEO · GEO · AEO audit<br>{esc(mode)} mode · {esc(date)}</div></div>'
             f'<nav>{nav}</nav>'
-            '<div><button type="button" class="print-btn" onclick="window.print()">Save as PDF ↗</button>'
-            '<div class="toolbar">Opens the browser\'s print dialog — or press ⌘P / Ctrl+P → Save as PDF.</div></div></div></aside>')
-    body = f'<div class="page">{side}<main>{"".join(out)}</main></div>'
+            '<div><button type="button" class="print-btn" id="pdf-btn">Save as PDF ↗</button>'
+            '<div class="toolbar" id="pdf-hint">Opens the browser\'s print dialog — or press ⌘P / Ctrl+P → Save as PDF.</div></div></div></aside>')
+    pdf_name = f"seo-audit-{re.sub(r'[^A-Za-z0-9.-]+', '-', host)}-{date or 'report'}.pdf"
+    body = f'<div class="page">{side}<main>{"".join(out)}</main></div>{pdf_block(pdf_path, pdf_name)}{BUTTON_JS}'
     return host, body
 
 
@@ -715,6 +754,7 @@ def main(argv=None) -> int:
     ap.add_argument("--collect", help="collector collect.json to add words / links-in / depth / schema to the pages table")
     ap.add_argument("--artifact", action="store_true", help="fragment form for the Claude Code Artifact tool")
     ap.add_argument("--previous", help="older sidecar for the same host — adds the Since-last-audit block")
+    ap.add_argument("--pdf", help="PDF from export_pdf.py to embed for the Save-as-PDF button (artifact viewers cannot print)")
     a = ap.parse_args(argv)
     with open(a.sidecar, encoding="utf-8") as f:
         doc = json.load(f)
@@ -727,7 +767,7 @@ def main(argv=None) -> int:
         with open(a.previous, encoding="utf-8") as f:
             prev = json.load(f)
         print(compare_line(compare(doc, prev)), file=sys.stderr)
-    title, body = render(doc, collect, prev)
+    title, body = render(doc, collect, prev, a.pdf)
     text = to_artifact(title, body) if a.artifact else to_document(title, body)
     out = a.out
     if not out:

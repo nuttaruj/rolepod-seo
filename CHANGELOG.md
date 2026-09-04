@@ -6,6 +6,29 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-09-04
+
+### Added
+
+- **Real PDF.** `skills/seo-audit/scripts/export_pdf.py` (stdlib) prints
+  the HTML report to `reports/seo-audit-<host>-<date>.pdf` with the print
+  engine of a Chromium-family browser already on the machine — Google
+  Chrome, Chromium, Microsoft Edge, Brave, Arc, or the Chromium that
+  rolepod-uiproof's Playwright keeps in its cache (`ROLEPOD_SEO_CHROME`
+  forces a binary). Same page as the HTML, fonts embedded; no PDF
+  library, no LibreOffice. Chrome's new headless mode does not always
+  exit after writing, so the exporter waits for the file to settle and
+  ends the process itself. No browser → exit 2 with the ⌘P / Ctrl+P hint.
+- **Save as PDF inside the Claude artifact.** `render_report.py --pdf`
+  embeds that PDF; the button hands it to the viewer through the Artifact
+  `downloads` capability (`capabilities: {downloads: true}` at publish),
+  because the viewer sandbox blocks `window.print()`. Outside a viewer, or
+  without an embedded PDF, the button still opens the browser's print
+  dialog. One inline script, no external code.
+- `/seo-audit` step 7 runs the exporter and publishes with the capability;
+  `tests/static/export-pdf.sh` produces a real PDF when a browser exists
+  and checks the hint path otherwise.
+
 ## [0.8.1] — 2026-09-04
 
 ### Fixed

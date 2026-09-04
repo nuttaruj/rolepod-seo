@@ -44,13 +44,17 @@ ceiling `xhigh`): this skill adds procedure only.
 3. **JSON sidecar** — `reports/seo-audit-<host>-<YYYY-MM-DD>.json`, the
    stable shape in `references/report.md` § JSON. Other tools consume it.
 4. **HTML report** — `reports/seo-audit-<host>-<YYYY-MM-DD>.html` rendered
-   from the sidecar by `scripts/render_report.py` (stdlib, self-contained:
-   navy cover with three colored score cards, findings tables, colored
-   priority matrix, a Save as PDF button that opens the browser's print
-   dialog). This is the visual deliverable on every CLI.
-5. **Artifact** — on Claude Code, publish the `--artifact` form of that
-   HTML as a private page and give the link. Skip silently elsewhere.
-   No docx / PDF export (owner decision, see docs/decisions.md).
+   from the sidecar by `scripts/render_report.py` (stdlib, self-contained,
+   fonts embedded). This is the visual deliverable on every CLI.
+5. **PDF** — `reports/seo-audit-<host>-<YYYY-MM-DD>.pdf` from
+   `scripts/export_pdf.py`: the print engine of a Chromium-family browser
+   already on the machine (Chrome, Chromium, Edge, Brave, or the Chromium
+   rolepod-uiproof keeps). No browser → say so; the HTML prints from any
+   browser with ⌘P / Ctrl+P.
+6. **Artifact** — on Claude Code, publish the `--artifact --pdf` form of
+   the HTML as a private page with `capabilities: {downloads: true}`; its
+   Save as PDF button hands the viewer the embedded PDF (the viewer sandbox
+   blocks printing). Skip silently elsewhere. No docx.
 
 ## Process
 
@@ -156,8 +160,10 @@ Write the JSON sidecar first (it drives everything else), then the
 markdown report, both from `references/report.md`. Render the HTML:
 
 ```bash
-python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --collect <collect.json> [--previous reports/seo-audit-<host>-<older-date>.json]
-python3 <skill-dir>/scripts/render_report.py reports/seo-audit-<host>-<date>.json --artifact   # Claude Code only
+R=reports/seo-audit-<host>-<date>
+python3 <skill-dir>/scripts/render_report.py $R.json --collect <collect.json> [--previous reports/seo-audit-<host>-<older-date>.json]
+python3 <skill-dir>/scripts/export_pdf.py $R.html --out $R.pdf                                        # real PDF via an installed browser
+python3 <skill-dir>/scripts/render_report.py $R.json --collect <collect.json> --artifact --pdf $R.pdf  # Claude Code only
 ```
 
 Set `seo_effect` on every finding (`direct` / `indirect` / `none`). What
@@ -171,9 +177,10 @@ same line. The HTML also derives a phased roadmap (week 1 / weeks 2–3 /
 month 2 / ongoing) and a quick-wins block from the priorities — no extra
 input needed.
 
-On Claude Code publish the `--artifact` file with the Artifact tool
-(`<title>` is the host; no external assets; light / dark tokens are built
-in). Then print the chat summary table and the chat priority matrix with
+On Claude Code publish the `--artifact` file with the Artifact tool and
+`capabilities: {downloads: true}` (`<title>` is the host; fonts embedded,
+no external assets). If `export_pdf.py` found no browser, publish without
+`--pdf`; the button then explains how to print the HTML. Then print the chat summary table and the chat priority matrix with
 colored dots in the Priority column (🔴 Critical · 🟠 High · 🟡 Medium ·
 🟢 Quick win), columns Priority · Issue · Dim · Effort · Impact · Owner ·
 Exact change. "Exact change" carries the field and value or the snippet —

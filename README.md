@@ -39,11 +39,11 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 | Chat | summary + priority matrix | one table (pages · date · three scores with band · top 3 priorities · biggest strength) and the matrix with colored priority dots (🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win) |
 | Files | markdown report + JSON sidecar | `reports/seo-audit-<host>-<date>.md` (findings tables with evidence, priority matrix, what's working, glossary) and `.json` with a stable, additive schema ([docs/report-schema.md](docs/report-schema.md)) that the other skills and outside tools consume |
 | Visual | HTML report → Save as PDF (browser print) | `reports/seo-audit-<host>-<date>.html` rendered from the sidecar by a stdlib script: sidebar with numbered navigation, dark hero with a one-line headline and three ring-gauge score cards, fix-first / quick-wins cards, pages table, one card per finding with Evidence and Fix panels, priority matrix cards with a Verify panel, a roadmap (week 1 / weeks 2–3 / month 2 / ongoing), owner calls, strengths, not assessed, the optional "no effect on Google Search" list last, band cards, glossary. `--previous older.json` adds "Since last audit". Inline CSS, fonts embedded (Instrument Sans + JetBrains Mono, OFL), no external requests, single light theme. A "Save as PDF" button opens the browser's print dialog (or ⌘P / Ctrl+P) |
-| Claude Code | Artifact | the same HTML published as a private page; share it from the page if you want |
+| PDF | `reports/seo-audit-<host>-<date>.pdf` | made by `export_pdf.py` with the print engine of a Chromium-family browser already on the machine (Chrome, Chromium, Edge, Brave, or rolepod-uiproof's Chromium) — same page as the HTML, fonts embedded; no PDF library |
+| Claude Code | Artifact | the same HTML published as a private page with the PDF embedded; its Save as PDF button hands the file to the viewer (the viewer blocks printing) |
 
-No docx export and no PDF tooling: the owner chose HTML + Artifact as the
-visual deliverable, with the browser's own print dialog for a PDF copy
-([docs/decisions.md](docs/decisions.md)).
+No docx export and no PDF library: the PDF is the browser's own print of
+the HTML report ([docs/decisions.md](docs/decisions.md)).
 
 Every finding quotes the page and the tag. "Missing" is claimed only after
 every fetched page was checked. Anything the plain fetch cannot see (Core
@@ -148,6 +148,7 @@ factories.
 ```bash
 make test          # test-static + test-fixture (bash + python3, no Node)
 python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out /tmp/report.html   # see the HTML tier
+python3 skills/seo-audit/scripts/export_pdf.py /tmp/report.html                                         # and the PDF
 make render        # copy skills/ + manifests into plugins/rolepod-seo/
 make version-bump VERSION=0.2.0
 make serve-fixture # tests/fixtures/site-a on :8765 for a manual audit run

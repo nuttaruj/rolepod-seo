@@ -186,7 +186,12 @@ Mono are embedded from `assets/fonts.css` (variable fonts, latin +
 latin-ext, SIL Open Font License) so the report renders identically
 offline, in the Claude Artifact viewer and in print — no external
 request at all. Single light theme on purpose (the design's `#F5F4FB`
-page, white cards, dark hero) so it reads the same in a dark viewer. Inline CSS
+page, white cards, dark hero) so it reads the same in a dark viewer.
+`scripts/export_pdf.py` turns the HTML into `reports/…pdf` with an
+installed Chromium-family browser's print engine; `render_report.py
+--pdf` embeds that PDF so the artifact's Save as PDF button can hand it
+over through the Artifact `downloads` capability (publish with
+`capabilities: {downloads: true}`). Inline CSS
 only, light / dark tokens, a "Save as PDF" button (`window.print()` only —
 no download link, no PDF library; the Claude Artifact viewer blocks
 page-initiated downloads and may restrict print, hence the ⌘P / Ctrl+P
