@@ -93,6 +93,7 @@ check('id="pdf-data"' not in doc, "no PDF embedded unless --pdf")
 pdfdoc = open(f"{out}/report.pdf.html", encoding="utf-8").read()
 check('<script type="application/pdf" id="pdf-data" data-filename="seo-audit-127.0.0.1-8765-2026-09-03.pdf">JVBERi0xLjQK' in pdfdoc, "--pdf embeds the PDF as base64 with the report filename")
 check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page" in doc and "print-color-adjust:exact" in doc, "print rules: hide toolbar, page breaks, exact colors")
+check(".scores,.phases,.grid3{grid-template-columns:repeat(3,1fr)}" in doc[doc.index("@media print"):], "print keeps the three-column grids (A4 is narrower than the mobile breakpoint)")
 sys.exit(bad)
 PY
 echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, tokens, no external assets"

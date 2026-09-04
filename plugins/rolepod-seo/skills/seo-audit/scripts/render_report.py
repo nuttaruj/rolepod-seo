@@ -400,6 +400,11 @@ tr:last-child td{border-bottom:0}
   .card,.fcard,.mcard,.phase,.tablewrap,.gcard,.since,.wcard{border:1px solid var(--line)}
   .hero{border-radius:14px;padding:26px 24px}
   .hero h1{font-size:26px}
+  .scores,.phases,.grid3{grid-template-columns:repeat(3,1fr)}
+  .two,.panels,.grid2,.gloss,.ongoing .grid,.since .cols{grid-template-columns:1fr 1fr}
+  .bands{grid-template-columns:repeat(5,1fr)}
+  .mcard{grid-template-columns:110px 1fr 180px}
+  #summary .two{break-inside:avoid;page-break-inside:avoid}
   section{padding:26px 0 0}
   #findings,#matrix{break-before:page;page-break-before:always}
   .fcard,.mcard,.phase,.card,.score-card,tr{page-break-inside:avoid;break-inside:avoid}

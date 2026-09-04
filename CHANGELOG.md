@@ -6,6 +6,14 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-09-04
+
+### Fixed
+
+- Print / PDF kept the desktop grids (three score cards, three roadmap
+  cards, five band cards) — an A4 page is narrower than the 960 px mobile
+  breakpoint, so the PDF had collapsed them to two columns.
+
 ## [0.9.0] — 2026-09-04
 
 ### Added
