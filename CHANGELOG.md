@@ -6,6 +6,30 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-09-05
+
+### Changed — page selection for real sites
+
+- **Quick follows the menu.** The collector reads the homepage's
+  `<nav>` / `<header>` (role=navigation, nav / menu classes) and audits
+  every main-menu item plus one level of submenu (`selected_by` = menu /
+  submenu), capped at 40 with a note; key-page patterns only when a site
+  has no navigation markup. A ten-item menu now yields ten pages, not six.
+- **Full samples the sitemap per section**, newest `lastmod` first
+  (`--per-section 10`, cap 150), after Quick's pages and footer links —
+  a 1,000-post blog is no longer 150 arbitrary posts; `site.selection`
+  records totals and selected counts per section.
+- **`--plan`** fetches only home + robots + sitemap and prints what
+  Quick / Full / All would fetch with time estimates, so `/seo-audit`
+  asks the mode question with real numbers (Quick recommended).
+- **`--all`** (fetch and parse everything) and **`--sitemap-status`**
+  (HEAD every unfetched sitemap URL: 404s, redirect chains, refusals →
+  `sitemap-status.tsv`, `site.sitemap_status`) are opt-in for "check
+  every page".
+- Fixture: nav is now a list with one submenu page
+  (`services/boilers.html`); tests cover the plan output, selection
+  order and the status sweep.
+
 ## [0.10.0] — 2026-09-05
 
 ### Added

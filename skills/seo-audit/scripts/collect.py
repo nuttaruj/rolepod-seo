@@ -255,6 +255,29 @@ def fetch(url: str, timeout: float, limit: int = 2_000_000) -> dict:
     return out
 
 
+def head(url: str, timeout: float) -> dict:
+    """Status-only probe for sitemap sweeps: HEAD, falling back to a tiny GET when HEAD is refused."""
+    why = unsafe_reason(url)
+    if why:
+        return {"status": 0, "final_url": url, "hops": 0, "error": f"refused: {why}"}
+    for method in ("HEAD", "GET"):
+        rh = _Redirects()
+        opener = urllib.request.build_opener(rh, urllib.request.HTTPSHandler(context=ssl_context()))
+        req = urllib.request.Request(url, method=method, headers={"User-Agent": UA})
+        try:
+            with opener.open(req, timeout=timeout) as r:
+                if method == "GET":
+                    r.read(1024)
+                return {"status": r.status, "final_url": r.geturl(), "hops": len(rh.hops), "error": ""}
+        except urllib.error.HTTPError as e:
+            if method == "HEAD" and e.code in (405, 403, 501):
+                continue
+            return {"status": e.code, "final_url": url, "hops": len(rh.hops), "error": ""}
+        except Exception as e:
+            return {"status": 0, "final_url": url, "hops": len(rh.hops), "error": f"{type(e).__name__}: {e}"[:120]}
+    return {"status": 0, "final_url": url, "hops": 0, "error": "no response"}
+
+
 def decode(body: bytes, content_type: str) -> str:
     """BOM → Content-Type charset → <meta charset> in the first 4 KB → utf-8 / cp1252 / latin-1."""
     if body.startswith(b"\xef\xbb\xbf"):
@@ -288,6 +311,11 @@ class Page(HTMLParser):
         self.hreflang = 0
         self.hreflang_links: list[dict] = []
         self.third_party: set[str] = set()
+        self.nav_links: list[tuple[str, int, str]] = []   # (url, list depth within the nav, region)
+        self._nav_stack: list[str] = []                      # open tags while inside a nav-ish element
+        self._nav_region = ""
+        self._nav_ul = 0
+        self._footer = 0
         self.lang = ""
         self.charset = False
         self.h: dict[int, list[str]] = {1: [], 2: [], 3: []}
@@ -318,6 +346,17 @@ class Page(HTMLParser):
             self.lang = a.get("lang", "")
         if tag in ("script", "iframe") and a.get("src"):
             self._note_third_party(a["src"])
+        cls_id = (a.get("class", "") + " " + a.get("id", "")).lower()
+        if tag == "footer" or re.search(r"(^|[\s_-])footer([\s_-]|$)", cls_id):
+            self._footer += 1
+        if self._nav_stack:
+            self._nav_stack.append(tag)
+            if tag in ("ul", "ol"):
+                self._nav_ul += 1
+        elif tag == "nav" or tag == "header" or a.get("role", "").lower() == "navigation" or re.search(r"(^|[\s_-])(nav|navbar|menu|main-menu|primary-menu)([\s_-]|$)", cls_id):
+            self._nav_stack.append(tag)
+            self._nav_region = "footer" if self._footer else ("header" if tag == "header" else "nav")
+            self._nav_ul = 0
         if tag in SKIP_TAGS:
             self._skip += 1
             if tag == "script" and a.get("type", "").replace(" ", "").lower() == "application/ld+json":
@@ -377,6 +416,8 @@ class Page(HTMLParser):
                     if same_origin(full, self.base):
                         self.links_int += 1
                         self.internal.append(full)
+                        if self._nav_stack:
+                            self.nav_links.append((full, max(self._nav_ul, 1), self._nav_region))
                     else:
                         self.links_ext += 1
             if "author" in a.get("rel", "").lower().split():
@@ -398,6 +439,17 @@ class Page(HTMLParser):
             self.third_party.add(host_of(full))
 
     def handle_endtag(self, tag):
+        if self._nav_stack:
+            # pop to the matching open tag; leaving the outermost element ends the nav context
+            if tag in self._nav_stack:
+                while self._nav_stack:
+                    t = self._nav_stack.pop()
+                    if t in ("ul", "ol"):
+                        self._nav_ul = max(0, self._nav_ul - 1)
+                    if t == tag:
+                        break
+        if tag == "footer" and self._footer:
+            self._footer -= 1
         if tag in SKIP_TAGS:
             if tag == "script" and self._ld_buf is not None:
                 self.jsonld_raw.append("".join(self._ld_buf))
@@ -555,6 +607,7 @@ def page_facts(url: str, res: dict) -> dict:
             "tables": p.tables,
             "lists": p.lists,
             "_internal_links": p.internal,
+            "_nav_links": p.nav_links,
             "_text": " ".join(p.text).lower(),
         }
     )
@@ -662,6 +715,72 @@ def read_sitemaps(urls: list[str], timeout: float, log) -> dict:
 
 
 # ---------------------------------------------------------------- selection
+QUICK_CAP = 40
+
+
+def section_of(url: str) -> str:
+    segs = [x for x in urllib.parse.urlsplit(url).path.split("/") if x]
+    return "/" + segs[0] if len(segs) > 1 else "/"
+
+
+def select_pages(base: str, home_row: dict, sitemap_entries: list[dict], mode: str, max_pages: int, per_section: int, everything: bool) -> tuple[list[tuple[str, str]], dict]:
+    """Quick = home + every main-menu item + one level of submenu (header / nav only). Full = that + footer links +
+    a stratified sample of the sitemap (per section, newest lastmod first) up to max_pages; --all lifts the caps."""
+    nav = home_row.get("_nav_links", [])
+    home_links = home_row.get("_internal_links", [])
+    seen = {norm(base)}
+    picks: list[tuple[str, str]] = []
+
+    def add(u: str, why: str) -> bool:
+        u2 = urllib.parse.urlsplit(u)._replace(fragment="").geturl()
+        if not same_origin(u2, base) or SKIP_RE.search(u2) or ASSET_RE.search(u2):
+            return False
+        k = norm(u2)
+        if k in seen:
+            return False
+        seen.add(k)
+        picks.append((u2, why))
+        return True
+
+    menu_main = sum(1 for u, lvl, reg in nav if reg in ("nav", "header") and lvl <= 1 and add(u, "menu"))
+    menu_sub = sum(1 for u, lvl, reg in nav if reg in ("nav", "header") and lvl >= 2 and add(u, "submenu"))
+    fallback = False
+    if menu_main + menu_sub < 3:  # no usable navigation markup: key-page patterns over every homepage link
+        fallback = True
+        for _label, rx in KEY_PAGES:
+            for u in sorted(home_links, key=lambda x: len(urllib.parse.urlsplit(x).path)):
+                if rx.search(path_of(u)) and add(u, "key-page"):
+                    break
+    info = {"menu_main": menu_main, "menu_sub": menu_sub, "nav_fallback": fallback, "quick_cap": QUICK_CAP}
+    if mode == "quick" and not everything:
+        info["quick_cap_hit"] = len(picks) > QUICK_CAP
+        return [(base, "home")] + picks[:QUICK_CAP], info
+    for u, lvl, reg in nav:
+        if reg == "footer":
+            add(u, "footer")
+    for u in home_links:
+        add(u, "home-link")
+    # stratified sitemap sample: per section, newest lastmod first
+    sections: dict[str, list[dict]] = {}
+    for e in sitemap_entries:
+        if same_origin(e["loc"], base):
+            sections.setdefault(section_of(e["loc"]), []).append(e)
+    sampled: dict[str, dict] = {}
+    for sec, entries in sorted(sections.items(), key=lambda kv: -len(kv[1])):
+        ordered = sorted(entries, key=lambda e: (e.get("lastmod") or ""), reverse=True)
+        taken = 0
+        for e in ordered:
+            if not everything and taken >= per_section:
+                break
+            if add(e["loc"], "sitemap"):
+                taken += 1
+        already = sum(1 for e in entries if norm(e["loc"]) in seen)
+        sampled[sec] = {"total": len(entries), "selected": already}
+    cap = len(picks) if everything else max_pages - 1
+    info.update({"sections": sampled, "sitemap_total": len(sitemap_entries), "cap": None if everything else max_pages, "cap_hit": len(picks) > cap})
+    return [(base, "home")] + picks[:cap], info
+
+
 def discover(base: str, home_links: list[str], sitemap_locs: list[str], mode: str, max_pages: int) -> list[str]:
     ordered: list[str] = []
     seen = {norm(base)}
@@ -849,7 +968,7 @@ def site_type(rows: list[dict], home_text: str) -> dict:
 
 # ---------------------------------------------------------------- output
 TSV_COLS = [
-    "url", "role", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
+    "url", "role", "selected_by", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
     "canonical_ok", "robots_meta", "lang", "word_count", "schema_types", "author_present", "faq_visible",
     "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "inlinks", "depth", "third_party", "error",
 ]
@@ -926,6 +1045,10 @@ def main(argv=None) -> int:
     ap.add_argument("--fixed-time", help="ISO timestamp to stamp instead of now (tests)")
     ap.add_argument("--insecure", action="store_true", help="skip TLS verification (recorded in site.json; last resort)")
     ap.add_argument("--allow-private", action="store_true", help="allow private / loopback targets (a site you run locally)")
+    ap.add_argument("--plan", action="store_true", help="fetch only home + robots + sitemap and print what Quick / Full / --all would fetch")
+    ap.add_argument("--per-section", type=int, default=10, help="Full mode: sitemap URLs sampled per top-level section (newest first)")
+    ap.add_argument("--all", action="store_true", help="fetch every discovered page (no section sampling, no cap)")
+    ap.add_argument("--sitemap-status", action="store_true", help="also HEAD every sitemap URL that was not fetched: status, redirects (no parsing)")
     a = ap.parse_args(argv)
     global _INSECURE, _ALLOW_PRIVATE
     _INSECURE = a.insecure
@@ -979,14 +1102,36 @@ def main(argv=None) -> int:
     llms_present = llms["status"] == 200 and b"<html" not in llms["body"][:2000].lower()
 
     # 3. page selection
+    selection_info: dict = {}
+    selected_by: dict[str, str] = {norm(base): "home"}
     if a.urls:
         with open(a.urls, encoding="utf-8") as f:
             urls = [l.strip() for l in f if l.strip() and not l.startswith("#")]
         if norm(base) not in {norm(u) for u in urls}:
             urls = [base] + urls
+        for u in urls[1:]:
+            selected_by[norm(u)] = "list"
+        selection_info = {"source": "--urls", "count": len(urls)}
     else:
-        urls = discover(base, home_row.get("_internal_links", []), [e["loc"] for e in sitemap["entries"]], a.mode, a.max_pages)
-    log(f"pages: {len(urls)} selected")
+        picks, selection_info = select_pages(base, home_row, sitemap["entries"], a.mode, a.max_pages, a.per_section, a.all)
+        urls = [u for u, _ in picks]
+        for u, why in picks:
+            selected_by[norm(u)] = why
+        selection_info["source"] = "all" if a.all else a.mode
+    if a.plan:
+        quick_picks, qi = select_pages(base, home_row, sitemap["entries"], "quick", a.max_pages, a.per_section, False)
+        full_picks, fi = select_pages(base, home_row, sitemap["entries"], "full", a.max_pages, a.per_section, False)
+        all_picks, _ = select_pages(base, home_row, sitemap["entries"], "full", a.max_pages, a.per_section, True)
+        plan = {
+            "base_url": base, "sitemap_urls": len(sitemap["entries"]), "menu_main": qi["menu_main"], "menu_sub": qi["menu_sub"], "nav_fallback": qi["nav_fallback"],
+            "quick": {"pages": len(quick_picks), "est_seconds": round(len(quick_picks) * 0.6), "cap_hit": qi.get("quick_cap_hit", False)},
+            "full": {"pages": len(full_picks), "est_seconds": round(len(full_picks) * 0.6), "sections": fi["sections"], "per_section": a.per_section},
+            "all": {"pages": len(all_picks), "est_seconds": round(len(all_picks) * 0.6)},
+        }
+        print(json.dumps(plan, indent=2, ensure_ascii=False))
+        log(f"plan: sitemap {plan['sitemap_urls']} · menu {plan['menu_main']} + submenu {plan['menu_sub']} → quick {plan['quick']['pages']} pages (~{plan['quick']['est_seconds']}s), full {plan['full']['pages']} (~{plan['full']['est_seconds']}s), all {plan['all']['pages']} (~{plan['all']['est_seconds']}s)")
+        return 0
+    log(f"pages: {len(urls)} selected ({selection_info.get('source')}; menu {selection_info.get('menu_main', 0)} + submenu {selection_info.get('menu_sub', 0)})")
 
     # 4. fetch pages
     rows = [home_row]
@@ -1009,6 +1154,7 @@ def main(argv=None) -> int:
             log(f"  {res['status'] or 'ERR':>4} {path_of(u)}  (hreflang alternate)")
     for r in rows:
         r["role"] = page_role(r["url"], base)
+        r["selected_by"] = selected_by.get(norm(r["url"]), "hreflang")
     sitemap_set = {norm(e["loc"]) for e in sitemap["entries"]}
     for r in rows:
         r["in_sitemap"] = norm(r["url"]) in sitemap_set
@@ -1078,6 +1224,26 @@ def main(argv=None) -> int:
         "pages_fetched": sum(1 for r in rows if r["status"] == 200),
         "pages_selected": len(rows),
     }
+    sitemap_status = None
+    if a.sitemap_status:
+        fetched_keys = {norm(r["url"]) for r in rows}
+        todo = [e["loc"] for e in sitemap["entries"] if norm(e["loc"]) not in fetched_keys][:5000]
+        counts = {"checked": 0, "ok": 0, "redirect": 0, "not_found": 0, "error": 0}
+        problems: list[dict] = []
+        status_rows: list[str] = ["url\tstatus\tfinal_url\thops"]
+        for u in todo:
+            res = head(u, min(a.timeout, 10.0))
+            counts["checked"] += 1
+            kind = "error" if res["error"] else ("not_found" if res["status"] >= 400 else ("redirect" if res["hops"] else "ok"))
+            counts[kind] += 1
+            if kind != "ok":
+                problems.append({"url": u, "status": res["status"], "final_url": res["final_url"], "hops": res["hops"], "error": res["error"]})
+            status_rows.append(f"{u}\t{res['status']}\t{res['final_url']}\t{res['hops']}")
+        os.makedirs(out, exist_ok=True)
+        with open(os.path.join(out, "sitemap-status.tsv"), "w", encoding="utf-8") as f:
+            f.write("\n".join(status_rows) + "\n")
+        sitemap_status = {**counts, "problems": problems[:200], "file": "sitemap-status.tsv"}
+        log(f"sitemap status: {counts}")
     graph = link_graph(rows, base)
     dups = near_duplicates(rows)
     stype = site_type(rows, home_row.get("_text", ""))
@@ -1085,6 +1251,8 @@ def main(argv=None) -> int:
     site["link_graph"] = graph
     site["near_duplicates"] = dups
     site["site_type"] = stype
+    site["selection"] = selection_info
+    site["sitemap_status"] = sitemap_status
     site["hreflang"] = hreflang_report(rows)
     tp_pages: dict[str, int] = {}
     for r in rows:
@@ -1104,6 +1272,7 @@ def main(argv=None) -> int:
     }
     for r in rows:
         r.pop("_internal_links", None)
+        r.pop("_nav_links", None)
         r.pop("_text", None)
         r.pop("_headers", None)
     doc = {

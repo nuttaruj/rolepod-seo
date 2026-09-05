@@ -60,14 +60,23 @@ ceiling `xhigh`): this skill adds procedure only.
 
 ## Process
 
-### 1. Mode — one question, skipped when the request already says
+### 1. Mode — one question with real numbers, Quick recommended
 
-Quick = homepage + up to 6 key pages, top issues, one screen. Full = every
-meaningful page from nav / footer / sitemap (skip legal, login, tag and
-paginated archives), all checks, priority matrix, glossary. Use the native
-question UI when the harness has one; otherwise print a numbered question
-with lettered options, mark the recommended default, and accept `1a` or
-`defaults` as the answer.
+First run the plan (home + robots + sitemap only, seconds):
+
+```bash
+python3 <skill-dir>/scripts/collect.py https://example.com --plan
+```
+
+Then ask once, quoting its numbers: **Quick** (recommended) = homepage +
+every main-menu item + one level of submenu (`quick.pages`, ~1 min);
+**Full** = Quick + footer links + a per-section sample of the sitemap,
+newest first (`full.pages` of `sitemap_urls`, e.g. 102 of 503); **All** =
+every sitemap URL (`all.pages`, the estimate in seconds) — offer All only
+when the user asks for every page. Skip the question when the request
+already says. Native question UI when the harness has one; otherwise a
+numbered question with lettered options, the default marked, `1a` or
+`defaults` accepted.
 
 ### 2. Preamble — detect companions, state the tiers
 
@@ -84,8 +93,15 @@ Print one line: `Tier A fetch · Tier B <on|off> (rolepod-uiproof) · connectors
 Run the bundled collector; it needs only Python 3, no packages:
 
 ```bash
-python3 <skill-dir>/scripts/collect.py https://example.com --mode quick   # or --mode full
+python3 <skill-dir>/scripts/collect.py https://example.com --mode quick   # --mode full · --all · --sitemap-status
 ```
+
+`--sitemap-status` adds a status-only sweep (HEAD) of every sitemap URL
+not fetched — 404s, redirects, refusals — for "check every page" without
+parsing 1,000 posts; `--all` fetches and parses everything. Both are
+opt-in; a blog with a thousand posts stays a Quick or Full sample by
+default, and the report says "sampled N of M — template findings apply to
+the whole section".
 
 It fetches the homepage, robots.txt, sitemap(s), llms.txt and the selected
 pages, then writes `pages.md` (one row per page, with inbound links and

@@ -157,7 +157,12 @@ Search) | `indirect` (trust and answer-structure signals, AI engines) |
 orders by effect and lists `none` items last under "No effect on Google
 Search — optional"; they never enter the priority matrix, the roadmap,
 the quick wins or the chat summary. The markdown report follows the same
-order. `pages[].gsc` is optional and only present when the user handed over a
+order. `site.selection` in `collect.json` says how pages were chosen
+(`menu_main`, `menu_sub`, `sections{total, selected}`, `cap_hit`); the
+markdown report's "Pages audited" line states "sampled N of M sitemap
+URLs" when Full sampled, and `sitemap_status` (from `--sitemap-status`)
+becomes a cross-page finding for each 404 / redirect chain. `pages[].gsc`
+is optional and only present when the user handed over a
 Search Console export (`seo-fix-plan/scripts/gsc_csv.py`); the report
 adds Clicks / Impressions / Position columns when it is there and says
 nothing when it is not. `verify` and `leading_indicator` are optional per

@@ -102,11 +102,15 @@ See [docs/cli-support.md](docs/cli-support.md) for the per-CLI matrix.
 Audit https://example.com for SEO and AI search
 ```
 
-The skill asks once — Quick (home + up to 6 key pages) or Full (every
-meaningful page) — runs the collector, and writes the report:
+The skill runs a plan first (home + robots + sitemap, seconds), then asks
+once with real numbers — Quick (recommended: home + every main-menu item
++ one submenu level), Full (Quick + a per-section sample of the sitemap,
+newest first) or All (every sitemap URL, only when asked) — runs the
+collector, and writes the report:
 
 ```bash
-python3 skills/seo-audit/scripts/collect.py https://example.com --mode quick
+python3 skills/seo-audit/scripts/collect.py https://example.com --plan          # counts + estimates, no page fetch
+python3 skills/seo-audit/scripts/collect.py https://example.com --mode quick    # or --mode full · --all · --sitemap-status
 # → .rolepod-seo/collect-example.com-<date>/pages.md · site.json · collect.json
 ```
 

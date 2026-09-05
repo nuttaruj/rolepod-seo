@@ -16,5 +16,5 @@ served origin at test time (`tests/fixture/serve.sh`). Deliberate defects:
 | `th/services.html` ↔ `services.html` | reciprocal hreflang pair, but `services.html` has no `x-default` |
 | `th/pricing.html` → `pricing.html` | claims an `en` alternate that does not link back (non-reciprocal) |
 | `th/services.html` | one alternate with an invalid language code (`xx`) |
-| `index.html` | loads a third-party analytics script (plausible.io) |
+| `index.html` | loads a third-party analytics script (plausible.io); nav is a `<ul>` with one submenu item (`services/boilers.html`) so Quick mode follows the real menu |
 | site | no `llms.txt`; no author pages; About has no `Person` schema |

@@ -1,8 +1,9 @@
-url	role	status	hops	title	title_len	description_len	h1_count	h1	h2_count	canonical_ok	robots_meta	lang	word_count	schema_types	author_present	faq_visible	faq_schema	question_headings	images_no_alt	og	date_visible	inlinks	depth	third_party	error
-BASE/	home	200	0	Northwind Plumbing — Emergency Plumbers in Leeds	48	152	1	Emergency plumbers in Leeds, at your door within two hours	4	self		en	331	Organization,WebSite	n	n	n	2	0	tdi	n	6	0	1	
-BASE/about.html	trust	200	0	About Northwind Plumbing — Who We Are	37	160	1	About Northwind Plumbing	4	self		en	272		n	n	n	3	0	-	n	1	1	0	
-BASE/services.html	money	200	0	Services	8	135	2	Plumbing and heating services in Leeds	4	self		en	233		n	n	n	0	1	-	n	4	1	0	
-BASE/pricing.html	money	200	0	Pricing — Northwind Plumbing Fixed Quotes	41	135	1	Pricing	2	self		en	155		n	n	n	1	0	ti	n	2	1	0	
-BASE/blog/	blog	200	0	Plumbing Advice Blog — Northwind Plumbing	41	162	1	Plumbing advice from our engineers	0	self		en	49		n	n	n	0	0	-	n	1	1	0	
-BASE/contact.html	trust	200	0	Contact Northwind Plumbing — Leeds	34	152	1	Contact us	2	self		en	83		n	n	n	0	0	-	n	5	1	0	
-BASE/faq.html	answer	200	0	FAQ — Northwind Plumbing	24	160	1	Frequently asked questions	6	self		en	289		n	y	n	6	0	-	n	1	1	0	
+url	role	selected_by	status	hops	title	title_len	description_len	h1_count	h1	h2_count	canonical_ok	robots_meta	lang	word_count	schema_types	author_present	faq_visible	faq_schema	question_headings	images_no_alt	og	date_visible	inlinks	depth	third_party	error
+BASE/	home	home	200	0	Northwind Plumbing — Emergency Plumbers in Leeds	48	152	1	Emergency plumbers in Leeds, at your door within two hours	4	self		en	333	Organization,WebSite	n	n	n	2	0	tdi	n	7	0	1	
+BASE/about.html	trust	menu	200	0	About Northwind Plumbing — Who We Are	37	160	1	About Northwind Plumbing	4	self		en	272		n	n	n	3	0	-	n	1	1	0	
+BASE/services.html	money	menu	200	0	Services	8	135	2	Plumbing and heating services in Leeds	4	self		en	233		n	n	n	0	1	-	n	5	1	0	
+BASE/pricing.html	money	menu	200	0	Pricing — Northwind Plumbing Fixed Quotes	41	135	1	Pricing	2	self		en	155		n	n	n	1	0	ti	n	2	1	0	
+BASE/faq.html	answer	menu	200	0	FAQ — Northwind Plumbing	24	160	1	Frequently asked questions	6	self		en	289		n	y	n	6	0	-	n	1	1	0	
+BASE/blog/	blog	menu	200	0	Plumbing Advice Blog — Northwind Plumbing	41	162	1	Plumbing advice from our engineers	0	self		en	49		n	n	n	0	0	-	n	1	1	0	
+BASE/contact.html	trust	menu	200	0	Contact Northwind Plumbing — Leeds	34	152	1	Contact us	2	self		en	83		n	n	n	0	0	-	n	5	1	0	
+BASE/services/boilers.html	money	submenu	200	0	Boiler Repair in Leeds — Same-Day, Gas Safe — Northwind Plumbing	64	176	1	Boiler repair in Leeds	2	self		en	181		n	n	n	2	0	-	n	1	1	0	

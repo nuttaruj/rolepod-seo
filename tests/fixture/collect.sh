@@ -20,6 +20,30 @@ for mode in quick full; do
     echo "  ✗ $mode: pages.tsv differs from tests/fixture/golden-$mode.tsv"; head -30 "$OUT/$mode/diff.txt" | sed 's/^/     /'; fail=1
   fi
 done
+python3 skills/seo-audit/scripts/collect.py "$BASE/" --plan --allow-private --quiet > "$OUT/plan.json" || { echo "  ✗ --plan failed"; fail=1; }
+python3 - "$OUT/plan.json" <<'PYP' || fail=1
+import json, sys
+p = json.load(open(sys.argv[1])); bad = 0
+def check(c, m):
+    global bad
+    if not c: print("  ✗ " + m); bad = 1
+check(p["sitemap_urls"] == 13 and p["menu_main"] == 6 and p["menu_sub"] == 1, f"plan counts (got sitemap {p['sitemap_urls']}, menu {p['menu_main']}+{p['menu_sub']})")
+check(p["quick"]["pages"] == 8 and p["full"]["pages"] == 13 and p["all"]["pages"] == 13, f"plan page counts quick/full/all (got {p['quick']['pages']}/{p['full']['pages']}/{p['all']['pages']})")
+check(p["quick"]["est_seconds"] >= 4 and "sections" in p["full"], "plan carries estimates and sections")
+sys.exit(bad)
+PYP
+python3 skills/seo-audit/scripts/collect.py "$BASE/" --mode quick --sitemap-status --out "$OUT/status" --quiet --allow-private --fixed-time 2026-01-01T00:00:00Z >/dev/null || { echo "  ✗ --sitemap-status run failed"; fail=1; }
+python3 - "$OUT/status/site.json" <<'PYS' || fail=1
+import json, sys, os
+s = json.load(open(sys.argv[1])); st = s["sitemap_status"]; bad = 0
+def check(c, m):
+    global bad
+    if not c: print("  ✗ " + m); bad = 1
+check(st is not None and st["checked"] == 5 and st["not_found"] == 1 and st["ok"] == 4, f"sitemap-status sweeps the 5 unfetched sitemap URLs, finds the 404 (got {st})")
+check(any(p["url"].endswith("/old-page.html") and p["status"] == 404 for p in st["problems"]), "old-page listed as a problem")
+check(os.path.exists(os.path.join(os.path.dirname(sys.argv[1]), "sitemap-status.tsv")), "sitemap-status.tsv written")
+sys.exit(bad)
+PYS
 python3 - "$OUT" "$BASE" <<'PY' || fail=1
 import json, sys
 out, base = sys.argv[1], sys.argv[2]
@@ -36,15 +60,19 @@ for name, d in (("quick", q), ("full", f)):
         check(set(p) >= {"url", "role", "status", "final_url", "hops"}, f"{name}: page keys on {p['url']}")
         check("_internal_links" not in p, f"{name}: internal link list leaked into output")
 s = f["site"]
-check(len(q["pages"]) == 7, f"quick selects home + 6 key pages (got {len(q['pages'])})")
+check(len(q["pages"]) == 8, f"quick selects home + every main-menu item + submenu (got {len(q['pages'])})")
+check([p["selected_by"] for p in q["pages"]] == ["home", "menu", "menu", "menu", "menu", "menu", "menu", "submenu"], f"quick selection order: home, menu…, submenu (got {[p['selected_by'] for p in q['pages']]})")
+check(q["site"]["selection"]["menu_main"] == 6 and q["site"]["selection"]["menu_sub"] == 1 and q["site"]["selection"]["nav_fallback"] is False, f"menu counts from the nav markup (got {q['site']['selection']})")
+check(any(p["url"].endswith("/services/boilers.html") for p in q["pages"]), "submenu page is in Quick")
 check(q["site"]["site_type"]["type"] == "local", "quick mode also detects the site type")
-check(len(f["pages"]) == 12, f"full selects every meaningful page incl. sitemap 404 + th alternates (got {len(f['pages'])})")
+check(len(f["pages"]) == 13, f"full selects every meaningful page incl. sitemap 404 + th alternates (got {len(f['pages'])})")
+check(f["site"]["selection"]["sections"].get("/", {}).get("total", 0) >= 6 and f["site"]["selection"]["cap_hit"] is False, f"full sampling info per section (got {f['site']['selection'].get('sections')})")
 check(not any("privacy" in p["url"] for p in f["pages"]), "legal page skipped in full mode")
 check(s["robots"]["agents"]["GPTBot"]["verdict"] == "blocked-all", "GPTBot verdict blocked-all")
 check(s["robots"]["agents"]["ClaudeBot"]["verdict"] == "partial", "ClaudeBot falls to wildcard partial")
 check(s["robots"]["agents"]["Googlebot"]["via"] == "wildcard", "Googlebot via wildcard")
 check(s["sitemap"]["declared_in_robots"] is False, "sitemap not declared in robots")
-check(s["sitemap"]["url_count"] == 12, f"sitemap url_count 12 (got {s['sitemap']['url_count']})")
+check(s["sitemap"]["url_count"] == 13, f"sitemap url_count 13 (got {s['sitemap']['url_count']})")
 check(s["sitemap"]["listed_but_not_200"] == [f"{base}/old-page.html"], "sitemap 404 detected")
 check(s["sitemap"]["listed_but_noindex"] == [f"{base}/blog/post-2.html"], "noindex-in-sitemap detected")
 check(s["llms_txt"]["present"] is False, "llms.txt absent")
@@ -54,9 +82,9 @@ check(s["site_type"]["type"] == "local" and s["site_type"]["confidence"] == "hig
 check(s["security"] == {"hsts": False, "hsts_value": "", "csp": False, "x_content_type_options": "", "server": s["security"]["server"]}, "security headers recorded (none on the fixture)")
 check(s["near_duplicates"] == [], f"no near-duplicate pages on the fixture (got {s['near_duplicates']})")
 g = s["link_graph"]
-check(g["pages_in_graph"] == 12, f"link graph covers every fetched row (got {g['pages_in_graph']})")
+check(g["pages_in_graph"] == 13, f"link graph covers every fetched row (got {g['pages_in_graph']})")
 check(g["unreachable_from_home"] == [], f"every 200 page reachable from home (got {g['unreachable_from_home']})")
-check("/blog/post-1.html" not in g["low_inlinks"] and set(g["low_inlinks"]) <= {"/faq.html", "/pricing.html", "/about.html", "/contact.html", "/services.html", "/th/services.html", "/th/pricing.html"}, f"low_inlinks only lists key pages (got {g['low_inlinks']})")
+check("/blog/post-1.html" not in g["low_inlinks"] and set(g["low_inlinks"]) <= {"/faq.html", "/pricing.html", "/about.html", "/contact.html", "/services.html", "/th/services.html", "/th/pricing.html", "/services/boilers.html"}, f"low_inlinks only lists key pages (got {g['low_inlinks']})")
 h = s["hreflang"]
 check(h["pages_with_hreflang"] == 3, f"three pages declare hreflang (got {h['pages_with_hreflang']})")
 check(h["missing_self"] == [], f"every hreflang page lists itself (got {h['missing_self']})")
