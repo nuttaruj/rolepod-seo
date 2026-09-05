@@ -27,19 +27,20 @@ p = json.load(open(sys.argv[1])); bad = 0
 def check(c, m):
     global bad
     if not c: print("  ✗ " + m); bad = 1
-check(p["sitemap_urls"] == 13 and p["menu_main"] == 6 and p["menu_sub"] == 1, f"plan counts (got sitemap {p['sitemap_urls']}, menu {p['menu_main']}+{p['menu_sub']})")
-check(p["quick"]["pages"] == 8 and p["full"]["pages"] == 13 and p["all"]["pages"] == 13, f"plan page counts quick/full/all (got {p['quick']['pages']}/{p['full']['pages']}/{p['all']['pages']})")
+check(p["sitemap_urls"] == 13 and p["structure_source"] == "sitemap" and p["sitemap_l1"] == 7 and p["sitemap_l2"] == 5 and p["menu_main"] == 0, f"plan counts (got {p})")
+check(p["quick"]["pages"] == 13 and p["full"]["pages"] == 13 and p["all"]["pages"] == 13, f"plan page counts quick/full/all (got {p['quick']['pages']}/{p['full']['pages']}/{p['all']['pages']})")
 check(p["quick"]["est_seconds"] >= 4 and "sections" in p["full"], "plan carries estimates and sections")
 sys.exit(bad)
 PYP
-python3 skills/seo-audit/scripts/collect.py "$BASE/" --mode quick --sitemap-status --out "$OUT/status" --quiet --allow-private --fixed-time 2026-01-01T00:00:00Z >/dev/null || { echo "  ✗ --sitemap-status run failed"; fail=1; }
+printf '%s/about.html\n' "$BASE" > "$OUT/one.txt"
+python3 skills/seo-audit/scripts/collect.py "$BASE/" --urls "$OUT/one.txt" --sitemap-status --out "$OUT/status" --quiet --allow-private --fixed-time 2026-01-01T00:00:00Z >/dev/null || { echo "  ✗ --sitemap-status run failed"; fail=1; }
 python3 - "$OUT/status/site.json" <<'PYS' || fail=1
 import json, sys, os
 s = json.load(open(sys.argv[1])); st = s["sitemap_status"]; bad = 0
 def check(c, m):
     global bad
     if not c: print("  ✗ " + m); bad = 1
-check(st is not None and st["checked"] == 5 and st["not_found"] == 1 and st["ok"] == 4, f"sitemap-status sweeps the 5 unfetched sitemap URLs, finds the 404 (got {st})")
+check(st is not None and st["checked"] == 11 and st["not_found"] == 1 and st["ok"] == 10, f"sitemap-status sweeps the 11 unfetched sitemap URLs, finds the 404 (got {st})")
 check(any(p["url"].endswith("/old-page.html") and p["status"] == 404 for p in st["problems"]), "old-page listed as a problem")
 check(os.path.exists(os.path.join(os.path.dirname(sys.argv[1]), "sitemap-status.tsv")), "sitemap-status.tsv written")
 sys.exit(bad)
@@ -60,10 +61,12 @@ for name, d in (("quick", q), ("full", f)):
         check(set(p) >= {"url", "role", "status", "final_url", "hops"}, f"{name}: page keys on {p['url']}")
         check("_internal_links" not in p, f"{name}: internal link list leaked into output")
 s = f["site"]
-check(len(q["pages"]) == 8, f"quick selects home + every main-menu item + submenu (got {len(q['pages'])})")
-check([p["selected_by"] for p in q["pages"]] == ["home", "menu", "menu", "menu", "menu", "menu", "menu", "submenu"], f"quick selection order: home, menu…, submenu (got {[p['selected_by'] for p in q['pages']]})")
-check(q["site"]["selection"]["menu_main"] == 6 and q["site"]["selection"]["menu_sub"] == 1 and q["site"]["selection"]["nav_fallback"] is False, f"menu counts from the nav markup (got {q['site']['selection']})")
-check(any(p["url"].endswith("/services/boilers.html") for p in q["pages"]), "submenu page is in Quick")
+sel = q["site"]["selection"]
+check(sel["structure_source"] == "sitemap" and sel["sitemap_l1"] == 7 and sel["sitemap_l2"] == 5 and sel["menu_extra"] == 0, f"quick structure from the sitemap: 7 level-1 + 5 level-2, nothing extra from the menu (got {sel})")
+check(len(q["pages"]) == 13, f"quick = home + every first-level URL + ≤2 newest per section (got {len(q['pages'])})")
+check([p["selected_by"] for p in q["pages"]] == ["home"] + ["sitemap-l1"] * 7 + ["sitemap-l2"] * 5, f"selection labels (got {[p['selected_by'] for p in q['pages']]})")
+check([p["url"].replace(base, "") for p in q["pages"]][1:8] == ["/about.html", "/services.html", "/pricing.html", "/faq.html", "/contact.html", "/blog/", "/old-page.html"], "level-1 pages keep sitemap order (incl. the 404 the sitemap lists)")
+check(any(p["url"].endswith("/services/boilers.html") for p in q["pages"]), "level-2 page under /services is in Quick")
 check(q["site"]["site_type"]["type"] == "local", "quick mode also detects the site type")
 check(len(f["pages"]) == 13, f"full selects every meaningful page incl. sitemap 404 + th alternates (got {len(f['pages'])})")
 check(f["site"]["selection"]["sections"].get("/", {}).get("total", 0) >= 6 and f["site"]["selection"]["cap_hit"] is False, f"full sampling info per section (got {f['site']['selection'].get('sections')})")
@@ -93,7 +96,7 @@ check(h["non_reciprocal"] == [{"page": "/th/pricing.html", "alternate": "/pricin
 check(h["alternates_not_fetched"] == 0, "all alternates fetched in full mode")
 check(h["invalid_codes"] == [{"page": "/th/services.html", "code": "xx", "href": "/services.html"}], f"invalid hreflang code detected (got {h['invalid_codes']})")
 check(s["third_party"]["analytics"] == ["plausible"] and s["third_party"]["hosts"] == {"plausible.io": 1} and s["third_party"]["home_count"] == 1, f"third-party hosts + analytics provider (got {s['third_party']})")
-check(q["site"]["hreflang"]["alternates_not_fetched"] >= 1, "quick mode reports unfetched alternates instead of guessing")
+check(q["site"]["hreflang"]["alternates_not_fetched"] == 0 and q["site"]["hreflang"]["non_reciprocal"] == f["site"]["hreflang"]["non_reciprocal"], "quick now covers the /th level-2 pages, so its hreflang report matches full")
 check(len(s["duplicates"]["descriptions"]) == 1, "duplicate description services/pricing")
 check(s["host_variants"].get("note", "").startswith("not assessed"), "host variants skipped on local")
 by = {p["url"].replace(base, ""): p for p in f["pages"]}

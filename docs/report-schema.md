@@ -35,6 +35,7 @@ every field below is present there.
 | `collection.pages_selected` | int | pages chosen for the run |
 | `collection.pages_fetched` | int | pages that returned 200 |
 | `collection.collect_path` | string | directory of the collector output (`pages.tsv`, `site.json`, `collect.json`) |
+| `collection.structure_source` | enum | optional — `sitemap` \| `nav` \| `home-links` \| `list`: where the page selection came from; anything but `sitemap` means the site has no usable sitemap and the report shows a "no sitemap.xml" banner |
 
 ## `scores.<dimension>`
 

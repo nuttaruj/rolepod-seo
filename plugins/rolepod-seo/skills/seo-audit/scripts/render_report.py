@@ -283,6 +283,7 @@ main{padding:34px 0 96px;max-width:900px;min-width:0}
 .chips{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .chips span{font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dark-label);background:var(--dark3);border-radius:99px;padding:7px 12px}
 .chips span.lime{color:#C6F24E}
+.chips span.coral{color:#FF8F72}
 .hero h1{margin:24px 0 0;font:600 44px/1.08 'Instrument Sans',sans-serif;letter-spacing:-.032em;color:#FFFFFF;max-width:660px;text-wrap:pretty}
 .scores{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:34px}
 .score-card{background:var(--dark2);border-radius:18px;padding:22px 22px 24px}
@@ -565,6 +566,9 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
         chips.append("<span>connectors</span>")
     if st_type and st_type != "unknown":
         chips.append(f"<span>{esc(SITE_TYPE_LABEL.get(st_type, st_type))}</span>")
+    no_sitemap = col.get("structure_source") in ("nav", "home-links")
+    if no_sitemap:
+        chips.append('<span class="coral">no sitemap.xml</span>')
     out.append('<header class="hero"><div class="chips">' + "".join(chips) + "</div>")
     out.append(f"<h1>{esc(headline_for(doc, findings))}</h1>")
     out.append('<div class="scores">')
@@ -646,7 +650,9 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
     if pages:
         n += 1
         sections.append(("pages", "Pages"))
-        out.append(f'<section id="pages">{shead(n, "Pages audited", f"{len(pages)} URL{"s" if len(pages) != 1 else ""} in scope" + (" · Search Console export joined" if has_gsc else ""))}<div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>Sitemap</th><th>Findings</th>'
+        out.append(f'<section id="pages">{shead(n, "Pages audited", f"{len(pages)} URL{"s" if len(pages) != 1 else ""} in scope" + (" · no sitemap — chosen from navigation" if no_sitemap else "") + (" · Search Console export joined" if has_gsc else ""))}'
+                   + ('<div class="decision" style="margin-bottom:14px"><div class="label">This site has no sitemap.xml</div><div class="text" style="margin-top:8px">The audit could not use the site\'s own map of its pages, so the pages below were chosen from the navigation links on the homepage and may miss sections. Publishing a sitemap is a finding in the SEO section.</div></div>' if no_sitemap else "")
+                   + '<div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>Sitemap</th><th>Findings</th>'
                    + ("<th>Words</th><th>Links in / depth</th>" if facts else "") + ("<th>Clicks</th><th>Impr.</th><th>Pos.</th>" if has_gsc else "") + "<th>Schema</th></tr></thead><tbody>")
         for p in pages:
             f = facts.get(p.get("url"), {})

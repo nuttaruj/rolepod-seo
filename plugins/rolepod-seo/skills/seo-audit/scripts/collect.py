@@ -716,6 +716,11 @@ def read_sitemaps(urls: list[str], timeout: float, log) -> dict:
 
 # ---------------------------------------------------------------- selection
 QUICK_CAP = 40
+L2_PER_SECTION = 2
+
+
+def url_depth(url: str) -> int:
+    return len([x for x in urllib.parse.urlsplit(url).path.split("/") if x])
 
 
 def section_of(url: str) -> str:
@@ -724,16 +729,23 @@ def section_of(url: str) -> str:
 
 
 def select_pages(base: str, home_row: dict, sitemap_entries: list[dict], mode: str, max_pages: int, per_section: int, everything: bool) -> tuple[list[tuple[str, str]], dict]:
-    """Quick = home + every main-menu item + one level of submenu (header / nav only). Full = that + footer links +
-    a stratified sample of the sitemap (per section, newest lastmod first) up to max_pages; --all lifts the caps."""
+    """Quick = home + the site's first-level URLs from the sitemap (its own map of the main sections) + the newest
+    L2_PER_SECTION pages under each + menu links the sitemap missed. No sitemap → navigation markup, and the report
+    says so. Full = Quick + footer links + a per-section sitemap sample (newest first) up to max_pages; --all lifts caps."""
     nav = home_row.get("_nav_links", [])
     home_links = home_row.get("_internal_links", [])
     seen = {norm(base)}
     picks: list[tuple[str, str]] = []
 
-    def add(u: str, why: str) -> bool:
+    def usable(u: str) -> str | None:
         u2 = urllib.parse.urlsplit(u)._replace(fragment="").geturl()
         if not same_origin(u2, base) or SKIP_RE.search(u2) or ASSET_RE.search(u2):
+            return None
+        return u2
+
+    def add(u: str, why: str) -> bool:
+        u2 = usable(u)
+        if not u2:
             return False
         k = norm(u2)
         if k in seen:
@@ -742,16 +754,39 @@ def select_pages(base: str, home_row: dict, sitemap_entries: list[dict], mode: s
         picks.append((u2, why))
         return True
 
+    entries = [e for e in sitemap_entries if usable(e["loc"])]
+    l1 = l2 = 0
+    if entries:
+        source = "sitemap"
+        for e in entries:  # sitemap order = the site's own priority order
+            if url_depth(e["loc"]) == 1 and add(e["loc"], "sitemap-l1"):
+                l1 += 1
+        by_section: dict[str, list[dict]] = {}
+        for e in entries:
+            if url_depth(e["loc"]) == 2:
+                by_section.setdefault(section_of(e["loc"]), []).append(e)
+        for sec, es in by_section.items():
+            taken = 0
+            for e in sorted(es, key=lambda e: (e.get("lastmod") or ""), reverse=True):
+                if taken >= L2_PER_SECTION:
+                    break
+                if add(e["loc"], "sitemap-l2"):
+                    taken += 1
+                    l2 += 1
+    else:
+        source = "nav"
     menu_main = sum(1 for u, lvl, reg in nav if reg in ("nav", "header") and lvl <= 1 and add(u, "menu"))
     menu_sub = sum(1 for u, lvl, reg in nav if reg in ("nav", "header") and lvl >= 2 and add(u, "submenu"))
     fallback = False
-    if menu_main + menu_sub < 3:  # no usable navigation markup: key-page patterns over every homepage link
+    if not entries and menu_main + menu_sub < 3:  # neither sitemap nor navigation markup: key-page patterns over the homepage links
         fallback = True
+        source = "home-links"
         for _label, rx in KEY_PAGES:
             for u in sorted(home_links, key=lambda x: len(urllib.parse.urlsplit(x).path)):
                 if rx.search(path_of(u)) and add(u, "key-page"):
                     break
-    info = {"menu_main": menu_main, "menu_sub": menu_sub, "nav_fallback": fallback, "quick_cap": QUICK_CAP}
+    info = {"structure_source": source, "sitemap_l1": l1, "sitemap_l2": l2, "l2_per_section": L2_PER_SECTION,
+            "menu_extra": menu_main, "submenu_extra": menu_sub, "menu_main": menu_main, "menu_sub": menu_sub, "nav_fallback": fallback, "quick_cap": QUICK_CAP}
     if mode == "quick" and not everything:
         info["quick_cap_hit"] = len(picks) > QUICK_CAP
         return [(base, "home")] + picks[:QUICK_CAP], info
@@ -1123,15 +1158,17 @@ def main(argv=None) -> int:
         full_picks, fi = select_pages(base, home_row, sitemap["entries"], "full", a.max_pages, a.per_section, False)
         all_picks, _ = select_pages(base, home_row, sitemap["entries"], "full", a.max_pages, a.per_section, True)
         plan = {
-            "base_url": base, "sitemap_urls": len(sitemap["entries"]), "menu_main": qi["menu_main"], "menu_sub": qi["menu_sub"], "nav_fallback": qi["nav_fallback"],
+            "base_url": base, "sitemap_urls": len(sitemap["entries"]), "structure_source": qi["structure_source"],
+            "sitemap_l1": qi["sitemap_l1"], "sitemap_l2": qi["sitemap_l2"], "menu_extra": qi["menu_extra"], "submenu_extra": qi["submenu_extra"],
+            "menu_main": qi["menu_main"], "menu_sub": qi["menu_sub"], "nav_fallback": qi["nav_fallback"],
             "quick": {"pages": len(quick_picks), "est_seconds": round(len(quick_picks) * 0.6), "cap_hit": qi.get("quick_cap_hit", False)},
             "full": {"pages": len(full_picks), "est_seconds": round(len(full_picks) * 0.6), "sections": fi["sections"], "per_section": a.per_section},
             "all": {"pages": len(all_picks), "est_seconds": round(len(all_picks) * 0.6)},
         }
         print(json.dumps(plan, indent=2, ensure_ascii=False))
-        log(f"plan: sitemap {plan['sitemap_urls']} · menu {plan['menu_main']} + submenu {plan['menu_sub']} → quick {plan['quick']['pages']} pages (~{plan['quick']['est_seconds']}s), full {plan['full']['pages']} (~{plan['full']['est_seconds']}s), all {plan['all']['pages']} (~{plan['all']['est_seconds']}s)")
+        log(f"plan: structure from {plan['structure_source']} · sitemap {plan['sitemap_urls']} (level-1 {plan['sitemap_l1']}, level-2 sampled {plan['sitemap_l2']}) · menu extra {plan['menu_extra']}+{plan['submenu_extra']} → quick {plan['quick']['pages']} pages (~{plan['quick']['est_seconds']}s), full {plan['full']['pages']} (~{plan['full']['est_seconds']}s), all {plan['all']['pages']} (~{plan['all']['est_seconds']}s)")
         return 0
-    log(f"pages: {len(urls)} selected ({selection_info.get('source')}; menu {selection_info.get('menu_main', 0)} + submenu {selection_info.get('menu_sub', 0)})")
+    log(f"pages: {len(urls)} selected ({selection_info.get('source')}, structure from {selection_info.get('structure_source', '--urls')}; sitemap level-1 {selection_info.get('sitemap_l1', 0)} + level-2 {selection_info.get('sitemap_l2', 0)}, menu extra {selection_info.get('menu_extra', 0)}+{selection_info.get('submenu_extra', 0)})")
 
     # 4. fetch pages
     rows = [home_row]

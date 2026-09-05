@@ -35,7 +35,8 @@
     ],
     "pages_selected": 10,
     "pages_fetched": 9,
-    "collect_path": ".rolepod-seo/collect-127.0.0.1-8765-20260903/"
+    "collect_path": ".rolepod-seo/collect-127.0.0.1-8765-20260903/",
+    "structure_source": "sitemap"
   },
   "scores": {
     "seo": {

@@ -68,15 +68,17 @@ First run the plan (home + robots + sitemap only, seconds):
 python3 <skill-dir>/scripts/collect.py https://example.com --plan
 ```
 
-Then ask once, quoting its numbers: **Quick** (recommended) = homepage +
-every main-menu item + one level of submenu (`quick.pages`, ~1 min);
-**Full** = Quick + footer links + a per-section sample of the sitemap,
-newest first (`full.pages` of `sitemap_urls`, e.g. 102 of 503); **All** =
-every sitemap URL (`all.pages`, the estimate in seconds) — offer All only
-when the user asks for every page. Skip the question when the request
-already says. Native question UI when the harness has one; otherwise a
-numbered question with lettered options, the default marked, `1a` or
-`defaults` accepted.
+Then ask once, quoting its numbers. **Quick** (recommended) = homepage +
+every first-level sitemap URL (`/about`, `/blog/` — the site's own main
+sections) + the two newest pages under each + menu links the sitemap
+missed (`quick.pages`; `cap_hit` when over 40). **Full** = Quick + footer
+links + a per-section sitemap sample, newest first (`full.pages` of
+`sitemap_urls`). **All** = every sitemap URL — offer only when asked.
+`structure_source: nav` = **no sitemap**: pages came from navigation
+links; write `collection.structure_source` into the sidecar, raise
+`seo-sitemap-missing` (high) and say it in the summary — the report shows
+the banner from that field. Skip the question when the request already
+says; native question UI or the numbered fallback (`1a` / `defaults`).
 
 ### 2. Preamble — detect companions, state the tiers
 
@@ -233,7 +235,5 @@ content-strategist execute without re-reading the audit.
 
 - `Audit https://northwind.example for SEO and AI search` → asks Quick / Full,
   runs the collector, writes both report files, prints the summary.
-- `Full SEO audit of acme.com, rolepod-uiproof is installed` → Tier B on,
-  CWV on home + two money pages, scout runs the sweep, glossary included.
-- `Quick check: why is /pricing not cited by Perplexity?` → Quick mode on
-  home + pricing, GEO / AEO findings first.
+- `Full SEO audit of acme.com, rolepod-uiproof is installed` → Tier B on, CWV on home + two money pages, scout sweep, glossary.
+- `Quick check: why is /pricing not cited by Perplexity?` → Quick on home + pricing, GEO / AEO first.

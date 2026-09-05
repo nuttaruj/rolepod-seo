@@ -25,6 +25,12 @@ for p in d["pages"]:
 json.dump(d, open(sys.argv[1] + "/with-gsc.json", "w"))
 PY3
 python3 skills/seo-audit/scripts/render_report.py "$OUT/with-gsc.json" --out "$OUT/report.gsc.html" >/dev/null
+python3 - "$OUT" <<'PY4'
+import json, sys
+d = json.load(open("tests/fixtures/sample-report.json")); d["collection"]["structure_source"] = "nav"
+json.dump(d, open(sys.argv[1] + "/nositemap.json", "w"))
+PY4
+python3 skills/seo-audit/scripts/render_report.py "$OUT/nositemap.json" --out "$OUT/report.nositemap.html" >/dev/null
 python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out "$OUT/gate.html" --min-score seo=6,geo=5,aeo=5 >/dev/null 2>&1 && rc=0 || rc=$?
 [ $rc -eq 0 ] || { echo "  ✗ --min-score should pass when every dimension meets its minimum (rc=$rc)"; exit 1; }
 gate=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out "$OUT/gate.html" --min-score 7 2>&1 >/dev/null) && rc=0 || rc=$?
@@ -78,6 +84,9 @@ check('<div class="printhead"><span>SEO · GEO · AEO audit — http://127.0.0.1
 check(r.parse_min_score("6") == {"seo": 6, "geo": 6, "aeo": 6} and r.parse_min_score("seo=7,aeo=4") == {"seo": 7, "aeo": 4} and r.parse_min_score("") == {}, "min-score spec parsing")
 check(r.below_minimum({"scores": {"seo": {"score": 6}, "geo": {"score": 5}, "aeo": {"score": 5}}}, "seo=6,geo=6") == ["GEO 5 < 6"], "below_minimum names the failing dimension")
 check("<th>Clicks</th>" not in doc, "no Search Console columns without gsc data")
+check("no sitemap.xml" not in doc, "no sitemap banner when the structure came from the sitemap")
+nsdoc = open(f"{out}/report.nositemap.html", encoding="utf-8").read()
+check('<span class="coral">no sitemap.xml</span>' in nsdoc and "This site has no sitemap.xml" in nsdoc and "no sitemap — chosen from navigation" in nsdoc, "no-sitemap banner in the hero and the pages section when structure_source is nav")
 gdoc = open(f"{out}/report.gsc.html", encoding="utf-8").read()
 check("<th>Clicks</th><th>Impr.</th><th>Pos.</th>" in gdoc and "<td>40</td><td>900</td><td>1.9</td>" in gdoc and "Search Console export joined" in gdoc, "gsc columns when pages carry gsc")
 check('class="foot">http://127.0.0.1:8765/ · full mode · generated 2026-09-03T10:00:00Z' in doc, "footer carries the URL and timestamp")

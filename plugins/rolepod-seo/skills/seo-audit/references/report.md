@@ -105,7 +105,8 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
     "tools": ["collect.py"],
     "pages_selected": 7,
     "pages_fetched": 6,
-    "collect_path": ".rolepod-seo/collect-example.com-20260903/"
+    "collect_path": ".rolepod-seo/collect-example.com-20260903/",
+    "structure_source": "sitemap"
   },
   "scores": {
     "seo": { "score": 6, "band": "solid", "status_label": "Needs Work", "drivers": ["…", "…", "…"] },
@@ -158,9 +159,13 @@ orders by effect and lists `none` items last under "No effect on Google
 Search — optional"; they never enter the priority matrix, the roadmap,
 the quick wins or the chat summary. The markdown report follows the same
 order. `site.selection` in `collect.json` says how pages were chosen
-(`menu_main`, `menu_sub`, `sections{total, selected}`, `cap_hit`); the
-markdown report's "Pages audited" line states "sampled N of M sitemap
-URLs" when Full sampled, and `sitemap_status` (from `--sitemap-status`)
+(`structure_source` sitemap | nav | home-links, `sitemap_l1`, `sitemap_l2`,
+`menu_extra`, `sections{total, selected}`, `cap_hit`); the markdown
+report's "Pages audited" line states the source and "sampled N of M
+sitemap URLs" when Full sampled, and says plainly when Quick was built
+from navigation links because the site has no sitemap — copy
+`site.selection.structure_source` into `collection.structure_source` so
+the HTML shows the "no sitemap.xml" banner, and `sitemap_status` (from `--sitemap-status`)
 becomes a cross-page finding for each 404 / redirect chain. `pages[].gsc`
 is optional and only present when the user handed over a
 Search Console export (`seo-fix-plan/scripts/gsc_csv.py`); the report

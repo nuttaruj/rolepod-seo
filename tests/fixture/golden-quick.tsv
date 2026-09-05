@@ -1,9 +1,14 @@
 url	role	selected_by	status	hops	title	title_len	description_len	h1_count	h1	h2_count	canonical_ok	robots_meta	lang	word_count	schema_types	author_present	faq_visible	faq_schema	question_headings	images_no_alt	og	date_visible	inlinks	depth	third_party	error
-BASE/	home	home	200	0	Northwind Plumbing — Emergency Plumbers in Leeds	48	152	1	Emergency plumbers in Leeds, at your door within two hours	4	self		en	333	Organization,WebSite	n	n	n	2	0	tdi	n	7	0	1	
-BASE/about.html	trust	menu	200	0	About Northwind Plumbing — Who We Are	37	160	1	About Northwind Plumbing	4	self		en	272		n	n	n	3	0	-	n	1	1	0	
-BASE/services.html	money	menu	200	0	Services	8	135	2	Plumbing and heating services in Leeds	4	self		en	233		n	n	n	0	1	-	n	5	1	0	
-BASE/pricing.html	money	menu	200	0	Pricing — Northwind Plumbing Fixed Quotes	41	135	1	Pricing	2	self		en	155		n	n	n	1	0	ti	n	2	1	0	
-BASE/faq.html	answer	menu	200	0	FAQ — Northwind Plumbing	24	160	1	Frequently asked questions	6	self		en	289		n	y	n	6	0	-	n	1	1	0	
-BASE/blog/	blog	menu	200	0	Plumbing Advice Blog — Northwind Plumbing	41	162	1	Plumbing advice from our engineers	0	self		en	49		n	n	n	0	0	-	n	1	1	0	
-BASE/contact.html	trust	menu	200	0	Contact Northwind Plumbing — Leeds	34	152	1	Contact us	2	self		en	83		n	n	n	0	0	-	n	5	1	0	
-BASE/services/boilers.html	money	submenu	200	0	Boiler Repair in Leeds — Same-Day, Gas Safe — Northwind Plumbing	64	176	1	Boiler repair in Leeds	2	self		en	181		n	n	n	2	0	-	n	1	1	0	
+BASE/	home	home	200	0	Northwind Plumbing — Emergency Plumbers in Leeds	48	152	1	Emergency plumbers in Leeds, at your door within two hours	4	self		en	333	Organization,WebSite	n	n	n	2	0	tdi	n	11	0	1	
+BASE/about.html	trust	sitemap-l1	200	0	About Northwind Plumbing — Who We Are	37	160	1	About Northwind Plumbing	4	self		en	272		n	n	n	3	0	-	n	2	1	0	
+BASE/services.html	money	sitemap-l1	200	0	Services	8	135	2	Plumbing and heating services in Leeds	4	self		en	233		n	n	n	0	1	-	n	6	1	0	
+BASE/pricing.html	money	sitemap-l1	200	0	Pricing — Northwind Plumbing Fixed Quotes	41	135	1	Pricing	2	self		en	155		n	n	n	1	0	ti	n	3	1	0	
+BASE/faq.html	answer	sitemap-l1	200	0	FAQ — Northwind Plumbing	24	160	1	Frequently asked questions	6	self		en	289		n	y	n	6	0	-	n	1	1	0	
+BASE/contact.html	trust	sitemap-l1	200	0	Contact Northwind Plumbing — Leeds	34	152	1	Contact us	2	self		en	83		n	n	n	0	0	-	n	5	1	0	
+BASE/blog/	blog	sitemap-l1	200	0	Plumbing Advice Blog — Northwind Plumbing	41	162	1	Plumbing advice from our engineers	0	self		en	49		n	n	n	0	0	-	n	3	1	0	
+BASE/old-page.html	other	sitemap-l1	404	0																			0	-		
+BASE/services/boilers.html	money	sitemap-l2	200	0	Boiler Repair in Leeds — Same-Day, Gas Safe — Northwind Plumbing	64	176	1	Boiler repair in Leeds	2	self		en	181		n	n	n	2	0	-	n	1	1	0	
+BASE/blog/post-1.html	blog	sitemap-l2	200	0	What to Do When a Pipe Bursts: The First Ten Minutes	52	168	1	What to do when a pipe bursts: the first ten minutes	7	cross-domain		en	490	BlogPosting,Person,Organization	y	n	n	6	0	tdi	y	1	2	0	
+BASE/blog/post-2.html	blog	sitemap-l2	200	0	Boiler fault codes	18	0	1	Boiler fault codes	0	self	noindex, follow	en	82		n	n	n	0	0	-	n	1	2	0	
+BASE/th/services.html	money	sitemap-l2	200	0	บริการช่างประปาและระบบทำความร้อนในลีดส์ — Northwind Plumbing	60	112	1	บริการช่างประปาและระบบทำความร้อนในลีดส์	2	self		th	34		n	n	n	0	0	-	n	1	2	0	
+BASE/th/pricing.html	money	sitemap-l2	200	0	ราคา — Northwind Plumbing ราคาแน่นอน	36	105	1	ราคา	0	self		th	25		n	n	n	0	0	-	n	1	2	0	

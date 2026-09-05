@@ -6,6 +6,27 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-09-05
+
+### Changed
+
+- **Quick is built from the sitemap first.** First-level URLs (`/about`,
+  `/pricing`, `/blog/`) are the site's own main sections; Quick takes all
+  of them, the two newest second-level pages under each section, then any
+  menu links the sitemap missed (`selected_by` = sitemap-l1 / sitemap-l2 /
+  menu / submenu; cap 40, reported). Navigation markup is the fallback
+  when there is no sitemap (`structure_source: nav`, stated in the
+  report), key-page patterns when there is neither. On anthropic.com the
+  nav heuristic saw 3 menu items; the sitemap shows 29 first-level
+  sections.
+- `--plan` reports `structure_source`, `sitemap_l1`, `sitemap_l2` and the
+  menu extras.
+- **No sitemap is said out loud.** Sidecar gains optional
+  `collection.structure_source`; when it is not `sitemap` the HTML shows a
+  "no sitemap.xml" chip on the cover and a banner above the pages table,
+  and `/seo-audit` raises `seo-sitemap-missing` (high) and says it in the
+  summary.
+
 ## [0.11.0] — 2026-09-05
 
 ### Changed — page selection for real sites

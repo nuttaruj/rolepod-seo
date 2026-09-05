@@ -103,10 +103,12 @@ Audit https://example.com for SEO and AI search
 ```
 
 The skill runs a plan first (home + robots + sitemap, seconds), then asks
-once with real numbers — Quick (recommended: home + every main-menu item
-+ one submenu level), Full (Quick + a per-section sample of the sitemap,
+once with real numbers — Quick (recommended: home + every first-level URL
+in the sitemap + the two newest pages under each, plus menu links the
+sitemap missed), Full (Quick + a per-section sample of the sitemap,
 newest first) or All (every sitemap URL, only when asked) — runs the
-collector, and writes the report:
+collector, and writes the report. No sitemap → Quick is built from the
+navigation and the report says so.
 
 ```bash
 python3 skills/seo-audit/scripts/collect.py https://example.com --plan          # counts + estimates, no page fetch
