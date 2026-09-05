@@ -33,7 +33,9 @@ ceiling `xhigh`): this skill adds procedure only.
 - `url` — homepage or domain. Required.
 - `mode` — `quick` | `full`. Asked once if not stated (step 1).
 - Optional: key pages, target queries, output directory (default
-  `reports/`), language hint.
+  `reports/`), language hint, a Search Console **Performance export**
+  (zip / CSV — see `seo-fix-plan/scripts/gsc_csv.py`; never required, ask
+  at most once).
 
 ## Outputs
 
@@ -120,8 +122,12 @@ collector refuses private, loopback and cloud-metadata targets; pass
 - `discover_flows` only when Tier A found no internal links on the
   homepage (JavaScript-only navigation).
 
-Tier C (Search Console, keyword, rank data) is Phase 2: list what it would
-add under "not assessed".
+Tier C (Search Console API, keyword, rank data) is Phase 2: list what it
+would add under "not assessed". Exception without any key: a manual
+Search Console export the user already has — run
+`seo-fix-plan/scripts/gsc_csv.py --pages <sidecar>` and the
+`queries-ctr-position` row moves from not assessed to assessed, with
+`pages[].gsc` filled. Skip silently when there is no export.
 
 ### 5. Analyze — per dimension, then cross-page
 

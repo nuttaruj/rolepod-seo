@@ -105,6 +105,30 @@ KEY_PAGES = [
 ]
 QUESTION_RE = re.compile(r"^(who|what|when|where|why|how|can|could|does|do|is|are|should|which|will)\b|\?\s*$", re.I)
 SKIP_TAGS = ("script", "style", "noscript", "template", "svg")
+# third-party script / stylesheet / iframe hosts → known analytics or tag providers (substring match on the host)
+ANALYTICS_PROVIDERS = [
+    ("googletagmanager.com", "google-tag-manager"), ("google-analytics.com", "google-analytics"), ("analytics.google.com", "google-analytics"),
+    ("plausible.io", "plausible"), ("posthog.com", "posthog"), ("amplitude.com", "amplitude"), ("mixpanel.com", "mixpanel"),
+    ("segment.com", "segment"), ("segment.io", "segment"), ("hotjar.com", "hotjar"), ("clarity.ms", "microsoft-clarity"),
+    ("usefathom.com", "fathom"), ("umami.is", "umami"), ("heapanalytics.com", "heap"), ("heap.io", "heap"),
+    ("rudderstack.com", "rudderstack"), ("intercom.io", "intercom"), ("matomo", "matomo"), ("pirsch.io", "pirsch"),
+    ("simpleanalytics.com", "simple-analytics"), ("vercel-scripts.com", "vercel-analytics"), ("vercel-insights.com", "vercel-analytics"),
+    ("goatcounter.com", "goatcounter"), ("newrelic.com", "new-relic"), ("nr-data.net", "new-relic"), ("fullstory.com", "fullstory"),
+    ("logrocket.com", "logrocket"), ("facebook.net", "meta-pixel"), ("connect.facebook.net", "meta-pixel"), ("tiktok.com", "tiktok-pixel"),
+    ("snap.licdn.com", "linkedin-insight"), ("ads-twitter.com", "x-pixel"), ("clickcease", "clickcease"), ("hs-scripts.com", "hubspot"),
+    ("hubspot.com", "hubspot"), ("crazyegg.com", "crazyegg"), ("mouseflow.com", "mouseflow"), ("cookiebot.com", "cookiebot"),
+    ("onetrust.com", "onetrust"), ("line-scdn.net", "line-tag"), ("googlesyndication.com", "adsense"), ("doubleclick.net", "google-ads"),
+]
+# ISO 639-1 language codes for hreflang validation (primary subtag only; region / script subtags are not checked)
+ISO_639_1 = set("""aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu""".split())
+
+
+def valid_hreflang(code: str) -> bool:
+    c = (code or "").strip().lower()
+    if c == "x-default":
+        return True
+    primary = c.split("-")[0]
+    return primary in ISO_639_1 or (len(primary) == 3 and primary.isalpha())  # ISO 639-2/3 three-letter codes are tolerated
 
 
 # ---------------------------------------------------------------- helpers
@@ -263,6 +287,7 @@ class Page(HTMLParser):
         self.icon = False
         self.hreflang = 0
         self.hreflang_links: list[dict] = []
+        self.third_party: set[str] = set()
         self.lang = ""
         self.charset = False
         self.h: dict[int, list[str]] = {1: [], 2: [], 3: []}
@@ -291,6 +316,8 @@ class Page(HTMLParser):
         a = {k: (v or "") for k, v in attrs}
         if tag == "html":
             self.lang = a.get("lang", "")
+        if tag in ("script", "iframe") and a.get("src"):
+            self._note_third_party(a["src"])
         if tag in SKIP_TAGS:
             self._skip += 1
             if tag == "script" and a.get("type", "").replace(" ", "").lower() == "application/ld+json":
@@ -318,6 +345,8 @@ class Page(HTMLParser):
         elif tag == "link":
             rel = a.get("rel", "").lower().split()
             href = a.get("href", "")
+            if "stylesheet" in rel and href:
+                self._note_third_party(href)
             if "canonical" in rel and self.canonical is None:
                 self.canonical = href
             if "alternate" in rel and a.get("hreflang"):
@@ -362,6 +391,11 @@ class Page(HTMLParser):
             self.tables += 1
         elif tag in ("ul", "ol"):
             self.lists += 1
+
+    def _note_third_party(self, src: str) -> None:
+        full = urllib.parse.urljoin(self.base, src)
+        if full.startswith("http") and not same_origin(full, self.base):
+            self.third_party.add(host_of(full))
 
     def handle_endtag(self, tag):
         if tag in SKIP_TAGS:
@@ -499,6 +533,8 @@ def page_facts(url: str, res: dict) -> dict:
             "twitter_card": p.metas.get("twitter:card", ""),
             "hreflang_count": p.hreflang,
             "hreflang": p.hreflang_links,
+            "third_party_hosts": sorted(p.third_party),
+            "analytics": sorted({prov for h in p.third_party for needle, prov in ANALYTICS_PROVIDERS if needle in h}),
             "word_count": words,
             "images": p.imgs,
             "images_no_alt": p.imgs_noalt,
@@ -734,15 +770,19 @@ def hreflang_report(rows: list[dict]) -> dict:
     fetched = {norm(r["final_url"]): r for r in rows if r.get("status") == 200}
     fetched.update({norm(r["url"]): r for r in rows if r.get("status") == 200})
     declared = [r for r in rows if r.get("status") == 200 and r.get("hreflang")]
-    missing_self, missing_xdefault, non_reciprocal = [], [], []
+    missing_self, missing_xdefault, non_reciprocal, invalid_codes = [], [], [], []
     unchecked = 0
     for r in declared:
         me = norm(r["final_url"])
         path = path_of(r["url"])
+        for h in r["hreflang"]:
+            if not valid_hreflang(h["lang"]):
+                invalid_codes.append({"page": path, "code": h["lang"], "href": path_of(h["href"])})
         alts = {norm(h["href"]): h["lang"] for h in r["hreflang"]}
+        langs = {h["lang"] for h in r["hreflang"]}
         if me not in alts and norm(r["url"]) not in alts:
             missing_self.append(path)
-        if "x-default" not in alts.values():
+        if "x-default" not in langs:
             missing_xdefault.append(path)
         for alt, lang in alts.items():
             if alt in (me, norm(r["url"])):
@@ -759,6 +799,7 @@ def hreflang_report(rows: list[dict]) -> dict:
         "missing_self": missing_self,
         "missing_x_default": missing_xdefault,
         "non_reciprocal": non_reciprocal,
+        "invalid_codes": invalid_codes,
         "alternates_not_fetched": unchecked,
     }
 
@@ -810,11 +851,13 @@ def site_type(rows: list[dict], home_text: str) -> dict:
 TSV_COLS = [
     "url", "role", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
     "canonical_ok", "robots_meta", "lang", "word_count", "schema_types", "author_present", "faq_visible",
-    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "inlinks", "depth", "error",
+    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "inlinks", "depth", "third_party", "error",
 ]
 
 
 def cell(row: dict, col: str) -> str:
+    if col == "third_party":
+        return str(len(row.get("third_party_hosts", []))) if "third_party_hosts" in row else ""
     v = row.get(col, "")
     if col == "schema_types":
         return ",".join(v) if isinstance(v, list) else ""
@@ -1043,6 +1086,15 @@ def main(argv=None) -> int:
     site["near_duplicates"] = dups
     site["site_type"] = stype
     site["hreflang"] = hreflang_report(rows)
+    tp_pages: dict[str, int] = {}
+    for r in rows:
+        for h in r.get("third_party_hosts", []):
+            tp_pages[h] = tp_pages.get(h, 0) + 1
+    site["third_party"] = {
+        "hosts": dict(sorted(tp_pages.items(), key=lambda kv: (-kv[1], kv[0]))),
+        "analytics": sorted({a for r in rows for a in r.get("analytics", [])}),
+        "home_count": len(home_row.get("third_party_hosts", [])),
+    }
     site["security"] = {
         "hsts": "strict-transport-security" in hh,
         "hsts_value": hh.get("strict-transport-security", ""),

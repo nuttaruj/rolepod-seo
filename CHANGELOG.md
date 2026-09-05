@@ -6,6 +6,30 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-09-05
+
+### Added
+
+- **Search Console demand without a key (optional).**
+  `skills/seo-fix-plan/scripts/gsc_csv.py` reads the manual Performance
+  export (zip with Pages.csv / Queries.csv, or single CSVs): quick wins
+  (position 4–20 with impressions), low-CTR top-3, seen-but-not-clicked,
+  top pages / queries, and a join with the audited URLs (plus Search
+  Console pages the audit never fetched). `/seo-fix-plan` re-ranks by
+  demand; the sidecar gains optional `pages[].gsc` and the HTML shows
+  Clicks / Impressions / Position. Never required — the audit is complete
+  without it and the skills ask at most once.
+- **Third-party origins per page** (`third_party_hosts[]`, `analytics[]`
+  from ~40 known analytics / tag / pixel hosts; `site.third_party`).
+- **hreflang language-code validation** (ISO 639-1 + `x-default`;
+  `site.hreflang.invalid_codes[]`).
+- **`render_report.py --min-score`** CI gate (`6` or
+  `seo=6,geo=5,aeo=5`) — exit 1 below the minimum.
+- `seo-checks.md`: rows for hreflang codes, query overlap
+  (cannibalization with the intent nuance), third-party scripts.
+- Fixture: analytics script on the homepage, one invalid hreflang code;
+  `tests/static/gsc-csv.sh`.
+
 ## [0.9.3] — 2026-09-04
 
 ### Fixed

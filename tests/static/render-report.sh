@@ -17,6 +17,18 @@ d["findings"].append(dict(id="seo-title-missing-about", dimension="seo", signal=
 json.dump(d, open(sys.argv[1] + "/previous.json", "w"))
 PY2
 prev_line=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --previous "$OUT/previous.json" --out "$OUT/report.prev.html" 2>&1 >/dev/null)
+python3 - "$OUT" <<'PY3'
+import json, sys
+d = json.load(open("tests/fixtures/sample-report.json"))
+for p in d["pages"]:
+    if p["url"].endswith("/faq.html"): p["gsc"] = {"clicks": 40, "impressions": 900, "ctr": 4.44, "position": 1.9}
+json.dump(d, open(sys.argv[1] + "/with-gsc.json", "w"))
+PY3
+python3 skills/seo-audit/scripts/render_report.py "$OUT/with-gsc.json" --out "$OUT/report.gsc.html" >/dev/null
+python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out "$OUT/gate.html" --min-score seo=6,geo=5,aeo=5 >/dev/null 2>&1 && rc=0 || rc=$?
+[ $rc -eq 0 ] || { echo "  ✗ --min-score should pass when every dimension meets its minimum (rc=$rc)"; exit 1; }
+gate=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --out "$OUT/gate.html" --min-score 7 2>&1 >/dev/null) && rc=0 || rc=$?
+[ $rc -eq 1 ] && grep -q "min-score not met: SEO 6 < 7, GEO 5 < 7, AEO 5 < 7" <<<"$gate" || { echo "  ✗ --min-score 7 should exit 1 naming the dimensions (rc=$rc: $gate)"; exit 1; }
 printf '%%PDF-1.4\n%%fake minimal pdf for the embed test\n' > "$OUT/fake.pdf"
 python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --artifact --pdf "$OUT/fake.pdf" --out "$OUT/report.pdf.html" >/dev/null
 grep -q "since 2026-08-01: SEO 4→6, GEO 5→5, AEO 5→5 · fixed 1 · new 1 · still open 2" <<<"$prev_line" || { echo "  ✗ --previous one-liner: $prev_line"; exit 1; }
@@ -63,6 +75,11 @@ check('<section id="roadmap"' in doc and ">Unblock<" in doc and "Ongoing — dec
 check(">Fix first</h3>" in doc and ">Quick wins</h3>" in doc, "fix-first + quick-wins cards in the summary")
 check("<h1>Solid foundations, three blockers between this site and both search engines.</h1>" in doc, "sidecar headline on the cover")
 check('<div class="printhead"><span>SEO · GEO · AEO audit — http://127.0.0.1:8765/</span><span>full mode · 2026-09-03</span></div>' in doc and ".printhead{display:flex" in doc[doc.index("@media print"):], "print header carries the audited URL, mode and date")
+check(r.parse_min_score("6") == {"seo": 6, "geo": 6, "aeo": 6} and r.parse_min_score("seo=7,aeo=4") == {"seo": 7, "aeo": 4} and r.parse_min_score("") == {}, "min-score spec parsing")
+check(r.below_minimum({"scores": {"seo": {"score": 6}, "geo": {"score": 5}, "aeo": {"score": 5}}}, "seo=6,geo=6") == ["GEO 5 < 6"], "below_minimum names the failing dimension")
+check("<th>Clicks</th>" not in doc, "no Search Console columns without gsc data")
+gdoc = open(f"{out}/report.gsc.html", encoding="utf-8").read()
+check("<th>Clicks</th><th>Impr.</th><th>Pos.</th>" in gdoc and "<td>40</td><td>900</td><td>1.9</td>" in gdoc and "Search Console export joined" in gdoc, "gsc columns when pages carry gsc")
 check('class="foot">http://127.0.0.1:8765/ · full mode · generated 2026-09-03T10:00:00Z' in doc, "footer carries the URL and timestamp")
 gen = r.headline_for({"scores": {"seo": {"score": 6}, "geo": {"score": 5}, "aeo": {"score": 4}}}, [{"priority": "critical", "status": "fail", "signal": "canonical"}, {"priority": "quick-win", "status": "fail", "signal": "h1"}])
 check(gen == "1 critical blocker, 1 quick win — SEO is the strongest at 6/10, AEO the weakest at 4/10.", f"generated headline fallback ({gen})")
@@ -98,4 +115,4 @@ check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page
 check(".scores,.phases,.grid3{grid-template-columns:repeat(3,1fr)}" in doc[doc.index("@media print"):], "print keeps the three-column grids (A4 is narrower than the mobile breakpoint)")
 sys.exit(bad)
 PY
-echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, tokens, no external assets"
+echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, min-score gate, gsc columns, no external assets"

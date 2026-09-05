@@ -55,6 +55,9 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | Redirect chains on nav links | ≤1 hop | `redirect_chains` | medium (≥2 hops) |
 | Duplicate titles / descriptions | none | `duplicates` | see per-page rows |
 | hreflang reciprocity | every alternate links back, every page lists itself, `x-default` present | `site.hreflang` (`non_reciprocal[]`, `missing_self[]`, `missing_x_default[]`; `alternates_not_fetched` in Quick mode) | high when multilingual; non-reciprocal pairs are ignored by Google |
+| hreflang codes | valid ISO 639-1 language (`th`, `en-GB`, `x-default`); no invented codes | `site.hreflang.invalid_codes[]` | medium — an invalid code is silently dropped by search engines |
+| Query overlap (cannibalization) | two pages target the same primary query (title / H1) with the **same** intent → consolidate or differentiate; same query, **different** intent → keep both, note it | `duplicates.titles`, matching H1s, the two paths | medium when both are money pages; different intent = info only |
+| Third-party scripts | homepage loads a bounded set of third-party origins; analytics / tag managers named | `third_party.home_count`, `third_party.analytics`, per page `third_party_hosts[]` | low; high when >10 origins on a money page (performance, and content that only exists after a tag manager runs) |
 | HTTPS everywhere | all fetched pages https | `https` | critical |
 | HSTS | `Strict-Transport-Security` on the home response | `security.hsts` | low |
 | Near-duplicate pages | no two fetched pages ≥70 % identical body text (templated location / service pages) | `near_duplicates[]` pairs with similarity | medium; high when both are money pages |

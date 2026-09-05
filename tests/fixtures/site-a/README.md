@@ -15,4 +15,6 @@ served origin at test time (`tests/fixture/serve.sh`). Deliberate defects:
 | `robots.txt` | blocks GPTBot + CCBot entirely; no `Sitemap:` line |
 | `th/services.html` ↔ `services.html` | reciprocal hreflang pair, but `services.html` has no `x-default` |
 | `th/pricing.html` → `pricing.html` | claims an `en` alternate that does not link back (non-reciprocal) |
+| `th/services.html` | one alternate with an invalid language code (`xx`) |
+| `index.html` | loads a third-party analytics script (plausible.io) |
 | site | no `llms.txt`; no author pages; About has no `Person` schema |

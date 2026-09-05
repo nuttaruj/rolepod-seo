@@ -29,6 +29,7 @@ test-static:
 	@bash tests/static/schema-minimums.sh
 	@bash tests/static/render-report.sh
 	@bash tests/static/export-pdf.sh
+	@bash tests/static/gsc-csv.sh
 	@echo "  ✓ test-static passed"
 
 test-fixture:

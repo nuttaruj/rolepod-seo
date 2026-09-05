@@ -50,6 +50,25 @@ Read the sidecar. Keep `status: fail | warn`. `info` findings with
 naming, which testimonials). `pass` and strengths are dropped. Merge
 findings that share one fix (one template change fixes forty pages).
 
+### 1b. Optional — Search Console demand (never required)
+
+If the user has a Search Console **Performance → Export** (zip or
+Pages / Queries CSV) at hand, run it once and re-rank with real demand;
+if they do not, skip this silently — the plan is complete without it and
+the audit never depends on it. Ask at most once, never block on it.
+
+```bash
+python3 <skill-dir>/scripts/gsc_csv.py <export.zip | Pages.csv Queries.csv> --pages reports/seo-audit-<host>-<date>.json
+```
+
+`gsc.json` / `gsc.md` give quick wins (position 4–20 with impressions),
+low-CTR top-3 pages, "seen but not clicked", top pages / queries, and the
+join with audited URLs (plus Search Console pages the audit never
+fetched — candidates for the next run). Use it to move items up when
+their page has demand, to turn title / description fixes into
+quick wins on low-CTR pages, and to add `pages[].gsc` to the sidecar so
+the HTML shows Clicks / Impressions / Position.
+
 ### 2. Order by dependency
 
 Fixed sequence — a later stage is pointless while an earlier one fails:

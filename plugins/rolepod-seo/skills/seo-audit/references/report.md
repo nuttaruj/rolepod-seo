@@ -138,7 +138,8 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
     { "signal": "cwv", "needs": "rolepod-uiproof measure_cwv", "installed": false }
   ],
   "pages": [
-    { "url": "https://example.com/", "role": "home", "status": 200, "in_sitemap": true }
+    { "url": "https://example.com/", "role": "home", "status": 200, "in_sitemap": true,
+      "gsc": { "clicks": 120, "impressions": 2400, "ctr": 5.0, "position": 2.3 } }
   ]
 }
 ```
@@ -156,8 +157,11 @@ Search) | `indirect` (trust and answer-structure signals, AI engines) |
 orders by effect and lists `none` items last under "No effect on Google
 Search — optional"; they never enter the priority matrix, the roadmap,
 the quick wins or the chat summary. The markdown report follows the same
-order. `verify` and `leading_indicator` are optional per finding (see
-`docs/report-schema.md`). `headline` (optional) is the one-sentence cover line — write it; the
+order. `pages[].gsc` is optional and only present when the user handed over a
+Search Console export (`seo-fix-plan/scripts/gsc_csv.py`); the report
+adds Clicks / Impressions / Position columns when it is there and says
+nothing when it is not. `verify` and `leading_indicator` are optional per
+finding (see `docs/report-schema.md`). `headline` (optional) is the one-sentence cover line — write it; the
 renderer only generates a count-based fallback. `summary` (optional) is
 the executive summary; `status_label` (optional,
 derived from the score: 8–10 On Track, 5–7 Needs Work, 1–4 Critical) is

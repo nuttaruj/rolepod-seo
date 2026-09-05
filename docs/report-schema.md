@@ -24,6 +24,7 @@ every field below is present there.
 | `strengths` | array | `{ signal, page, evidence }` — same evidence standard as findings |
 | `not_assessed` | array | `{ signal, needs, installed }` — what a tool or connector would add |
 | `pages` | array | `{ url, role, status, in_sitemap }` — every page selected, fetched or not |
+| `pages[].gsc` | object | optional — `{ clicks, impressions, ctr, position }` from a manual Search Console export joined by `seo-fix-plan/scripts/gsc_csv.py`; never required |
 
 ## `collection`
 

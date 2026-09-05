@@ -47,6 +47,12 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 No docx export and no PDF library: the PDF is the browser's own print of
 the HTML report ([docs/decisions.md](docs/decisions.md)).
 
+Optional, never required: hand `/seo-fix-plan` a Search Console
+**Performance export** (zip or CSV) and it re-ranks the plan by real
+clicks / impressions / position and shows them per page — no API, no key.
+For CI, `render_report.py --min-score seo=6,geo=5,aeo=5` exits 1 when a
+dimension is below its minimum.
+
 Every finding quotes the page and the tag. "Missing" is claimed only after
 every fetched page was checked. Anything the plain fetch cannot see (Core
 Web Vitals, rendered DOM, Search Console data) is listed as "not assessed"

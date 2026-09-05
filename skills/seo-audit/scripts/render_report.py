@@ -21,6 +21,12 @@ so it reads the same inside a dark viewer.
 still-open findings matched by id) and prints the same one-liner to
 stderr for the chat summary.
 
+--min-score '6' or 'seo=6,geo=5,aeo=5' turns the renderer into a CI gate:
+exit 1 when a dimension scores below its minimum (the file is still
+written). Pages carrying an optional `gsc` object (from
+seo-fix-plan/scripts/gsc_csv.py) get Clicks / Impressions / Position
+columns.
+
 --pdf embeds the PDF that export_pdf.py made, so the Save-as-PDF button
 hands the viewer the real file through the Artifact "downloads"
 capability (the viewer sandbox blocks window.print()). Without it, or
@@ -195,6 +201,32 @@ def compare_line(cmp: dict) -> str:
         if isinstance(a, int) and isinstance(b, int):
             parts.append(f"{DIM_NAME[d]} {a}→{b}")
     return f"since {cmp['previous_date']}: " + ", ".join(parts) + f" · fixed {len(cmp['fixed'])} · new {len(cmp['new'])} · still open {len(cmp['still'])}"
+
+
+def parse_min_score(spec: str) -> dict[str, int]:
+    """'6' → every dimension ≥ 6; 'seo=6,geo=5' → per dimension (others unchecked)."""
+    spec = (spec or "").strip()
+    if not spec:
+        return {}
+    if spec.isdigit():
+        return {d: int(spec) for d in ("seo", "geo", "aeo")}
+    out: dict[str, int] = {}
+    for part in spec.split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            if k.strip().lower() in ("seo", "geo", "aeo") and v.strip().isdigit():
+                out[k.strip().lower()] = int(v.strip())
+    return out
+
+
+def below_minimum(doc: dict, spec: str) -> list[str]:
+    mins = parse_min_score(spec)
+    failed = []
+    for d, m in mins.items():
+        score = doc.get("scores", {}).get(d, {}).get("score")
+        if not isinstance(score, int) or score < m:
+            failed.append(f"{DIM_NAME.get(d, d)} {score if isinstance(score, int) else 'not assessed'} < {m}")
+    return failed
 
 
 def headline_for(doc: dict, findings: list[dict]) -> str:
@@ -610,11 +642,12 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
     per_page: dict[str, dict[str, int]] = {}
     for f in open_:
         per_page.setdefault(f.get("page", ""), {"fail": 0, "warn": 0})[f["status"]] += 1
+    has_gsc = any(isinstance(p.get("gsc"), dict) for p in pages)
     if pages:
         n += 1
         sections.append(("pages", "Pages"))
-        out.append(f'<section id="pages">{shead(n, "Pages audited", f"{len(pages)} URL{"s" if len(pages) != 1 else ""} in scope")}<div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>Sitemap</th><th>Findings</th>'
-                   + ("<th>Words</th><th>Links in / depth</th>" if facts else "") + "<th>Schema</th></tr></thead><tbody>")
+        out.append(f'<section id="pages">{shead(n, "Pages audited", f"{len(pages)} URL{"s" if len(pages) != 1 else ""} in scope" + (" · Search Console export joined" if has_gsc else ""))}<div class="tablewrap"><table><thead><tr><th>Page</th><th>Role</th><th>Status</th><th>Sitemap</th><th>Findings</th>'
+                   + ("<th>Words</th><th>Links in / depth</th>" if facts else "") + ("<th>Clicks</th><th>Impr.</th><th>Pos.</th>" if has_gsc else "") + "<th>Schema</th></tr></thead><tbody>")
         for p in pages:
             f = facts.get(p.get("url"), {})
             s_ = p.get("status")
@@ -627,6 +660,9 @@ def render(doc: dict, collect: dict | None = None, prev: dict | None = None, pdf
             if facts:
                 dep = f.get("depth")
                 row += f'<td>{esc(f.get("word_count", "—"))}</td><td>{esc(f.get("inlinks", "—"))} / {"—" if dep is None else esc(dep)}</td>'
+            if has_gsc:
+                g = p.get("gsc") if isinstance(p.get("gsc"), dict) else {}
+                row += f'<td>{esc(g.get("clicks", "—"))}</td><td>{esc(g.get("impressions", "—"))}</td><td>{esc(g.get("position", "—"))}</td>'
             row += f'<td class="{"faint" if not schema else "mono"}">{esc(schema) if schema else "none"}</td></tr>'
             out.append(row)
         out.append("</tbody></table>" + ("" if facts else '<div class="toolbar" style="margin-top:12px">Links in and crawl depth are not captured in this collection tier.</div>') + "</div></section>")
@@ -805,6 +841,7 @@ def main(argv=None) -> int:
     ap.add_argument("--artifact", action="store_true", help="fragment form for the Claude Code Artifact tool")
     ap.add_argument("--previous", help="older sidecar for the same host — adds the Since-last-audit block")
     ap.add_argument("--pdf", help="PDF from export_pdf.py to embed for the Save-as-PDF button (artifact viewers cannot print)")
+    ap.add_argument("--min-score", help="CI gate: '6' or 'seo=6,geo=5,aeo=5' — exit 1 when a dimension scores below its minimum")
     a = ap.parse_args(argv)
     with open(a.sidecar, encoding="utf-8") as f:
         doc = json.load(f)
@@ -826,6 +863,11 @@ def main(argv=None) -> int:
     with open(out, "w", encoding="utf-8") as f:
         f.write(text)
     print(out)
+    if a.min_score:
+        failed = below_minimum(doc, a.min_score)
+        if failed:
+            print("min-score not met: " + ", ".join(failed), file=sys.stderr)
+            return 1
     return 0
 
 
