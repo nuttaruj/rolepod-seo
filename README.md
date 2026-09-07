@@ -45,7 +45,7 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 | Claude Code | Artifact | the same HTML published as a private page with the PDF embedded; its Save as PDF button hands the file to the viewer (the viewer blocks printing) |
 
 No docx export and no PDF library: the PDF is the browser's own print of
-the HTML report ([docs/decisions.md](docs/decisions.md)).
+the HTML report.
 
 Optional, never required: hand `/seo-fix-plan` a Search Console
 **Performance export** (zip or CSV) and it re-ranks the plan by real
@@ -94,7 +94,8 @@ Skills are auto-discovered from `skills/<name>/SKILL.md`. Restart the CLI.
 Copy `skills/` into the workspace's skill directory. The collector is a
 single Python file and runs anywhere Python 3 does.
 
-See [docs/cli-support.md](docs/cli-support.md) for the per-CLI matrix.
+Install paths differ per CLI; the manifests in this repo cover Claude Code,
+Codex, Cursor, Gemini and the generic `.agents/` layout.
 
 ## Quick start
 
@@ -167,8 +168,6 @@ make render        # copy skills/ + manifests into plugins/rolepod-seo/
 make version-bump VERSION=0.2.0
 make serve-fixture # tests/fixtures/site-a on :8765 for a manual audit run
 ```
-
-Decisions taken during the scaffold: [docs/decisions.md](docs/decisions.md).
 
 `tests/fixtures/site-a` is a tiny fictional plumbing site with deliberate
 defects (cross-domain canonical, FAQ without schema, noindex page in the

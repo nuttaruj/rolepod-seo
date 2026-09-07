@@ -194,8 +194,9 @@ Set `seo_effect` on every finding (`direct` / `indirect` / `none`). What
 changes Google Search comes first in every table; `none` items (retired
 rich results such as `FAQPage`, `llms.txt`) are labelled "no effect on
 Google Search", listed last, and never enter the matrix, roadmap, quick
-wins or the chat summary. Pass `--previous` whenever an older sidecar for
-the same host exists in `reports/`: the report gains a "Since last audit" section (score deltas,
+wins or the chat summary. Both `reports/` and `.rolepod-seo/` rotate: the set / run just written plus
+the two newest older ones for that host stay, older ones are deleted. Pass
+`--previous` when an older sidecar for the same host exists: the report gains a "Since last audit" section (score deltas,
 fixed / new / still-open findings by `id`) and the chat summary gets the
 same line. The HTML also derives a phased roadmap (week 1 / weeks 2–3 /
 month 2 / ongoing) and a quick-wins block from the priorities — no extra

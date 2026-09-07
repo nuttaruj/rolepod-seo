@@ -15,6 +15,10 @@ Outputs (in --out, default .rolepod-seo/collect-<host>-<YYYYMMDD>/):
   site.json     robots / sitemap / duplicates / redirects / host variants
   collect.json  pages + site in one document (feeds the JSON sidecar)
 
+Runs in the default location are rotated: the current run plus the two
+newest older runs for that host are kept, anything older is deleted. A
+directory given with --out is never rotated.
+
 No JavaScript is executed. Rendered-DOM checks (JS-injected meta, JSON-LD
 added at runtime, Core Web Vitals) belong to rolepod-uiproof.
 
@@ -34,6 +38,7 @@ import datetime as dt
 import json
 import os
 import re
+import shutil
 import ssl
 import sys
 import urllib.error
@@ -45,6 +50,7 @@ from html.parser import HTMLParser
 VERSION = 1
 UA = "Mozilla/5.0 (compatible; rolepod-seo/0.1; +https://github.com/nuttaruj/rolepod-seo)"
 BOTS = ["Googlebot", "Bingbot", "GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended", "CCBot"]
+BACKUP_RUNS_KEPT = 2
 SITEMAP_MAX_BYTES = 20 * 1024 * 1024
 SITEMAP_MAX_URLS = 50_000
 BLOCKED_HOSTS = {"localhost", "metadata.google.internal", "metadata", "instance-data", "169.254.169.254", "fd00:ec2::254"}
@@ -1028,6 +1034,26 @@ def cell(row: dict, col: str) -> str:
     return str(v).replace("\t", " ").replace("\n", " ")
 
 
+def prune_old_runs(out: str, host: str, keep: int = BACKUP_RUNS_KEPT) -> list[str]:
+    """Delete this host's older collect dirs, keeping the newest `keep` besides the current run.
+
+    Only the default .rolepod-seo/collect-<host>-<date>/ layout is pruned — a
+    directory the caller named with --out is never touched.
+    """
+    parent, name = os.path.split(os.path.abspath(out.rstrip("/")))
+    prefix = f"collect-{host.replace(':', '-')}-"
+    if os.path.basename(parent) != ".rolepod-seo" or not name.startswith(prefix):
+        return []
+    older = sorted((d for d in os.listdir(parent)
+                    if d != name and d.startswith(prefix) and os.path.isdir(os.path.join(parent, d))),
+                   reverse=True)
+    dropped = []
+    for d in older[keep:]:
+        shutil.rmtree(os.path.join(parent, d), ignore_errors=True)
+        dropped.append(d)
+    return dropped
+
+
 def write_outputs(out: str, doc: dict):
     os.makedirs(out, exist_ok=True)
     rows = doc["pages"]
@@ -1322,6 +1348,9 @@ def main(argv=None) -> int:
         "site": site,
     }
     write_outputs(out, doc)
+    dropped = prune_old_runs(out, host)
+    if dropped:
+        log(f"pruned {len(dropped)} older run(s), kept the newest {BACKUP_RUNS_KEPT}: {', '.join(dropped)}")
     log(f"site type: {stype['type']} ({stype['confidence']}) · near-duplicates: {len(dups)} · unreachable from home: {len(graph['unreachable_from_home'])}")
     log(f"wrote {out}/pages.md, pages.tsv, site.json, collect.json — {site['pages_fetched']}/{site['pages_selected']} pages 200")
     print(out)

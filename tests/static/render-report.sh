@@ -124,4 +124,36 @@ check(".no-print,.toolbar{display:none!important}" in doc and "break-before:page
 check(".scores,.phases,.grid3{grid-template-columns:repeat(3,1fr)}" in doc[doc.index("@media print"):], "print keeps the three-column grids (A4 is narrower than the mobile breakpoint)")
 sys.exit(bad)
 PY
-echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, min-score gate, gsc columns, no external assets"
+# rotation: the current set plus the two newest older sets survive; anything older goes
+ROT="$OUT/rotate"; mkdir -p "$ROT"
+for d in 2026-06-01 2026-07-01 2026-08-01 2026-09-01; do
+  for ext in .md .json .html .artifact.html .pdf; do : > "$ROT/seo-audit-example.test-$d$ext"; done
+done
+cp tests/fixtures/sample-report.json "$ROT/seo-audit-example.test-2026-09-05.json"
+python3 skills/seo-audit/scripts/render_report.py "$ROT/seo-audit-example.test-2026-09-05.json" --out "$ROT/seo-audit-example.test-2026-09-05.html" >/dev/null 2>&1
+left=$(ls "$ROT" | sed -n 's/^seo-audit-example.test-\([0-9-]*\)\..*/\1/p' | sort -u | tr '\n' ' ')
+[ "$left" = "2026-08-01 2026-09-01 2026-09-05 " ] || { echo "  ✗ report rotation kept: $left"; exit 1; }
+# a caller-named --out is never rotated
+cp tests/fixtures/sample-report.json "$ROT/seo-audit-example.test-2026-10-01.json"
+python3 skills/seo-audit/scripts/render_report.py "$ROT/seo-audit-example.test-2026-10-01.json" --out "$ROT/custom-name.html" >/dev/null 2>&1
+[ -f "$ROT/seo-audit-example.test-2026-08-01.md" ] || { echo "  ✗ custom --out must not rotate the dated sets"; exit 1; }
+# collector runs: same retention, only under .rolepod-seo/
+CROT="$OUT/runs/.rolepod-seo"; mkdir -p "$CROT"
+for d in 20260601 20260701 20260801 20260901 20260905; do mkdir -p "$CROT/collect-example.test-$d"; done
+mkdir -p "$CROT/collect-other.test-20260101"
+python3 - "$CROT" <<'PYR'
+import os, sys, importlib.util
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("c", "skills/seo-audit/scripts/collect.py")
+c = importlib.util.module_from_spec(spec); spec.loader.exec_module(c)
+root = sys.argv[1]
+c.prune_old_runs(os.path.join(root, "collect-example.test-20260905"), "example.test")
+left = sorted(os.listdir(root))
+want = ["collect-example.test-20260801", "collect-example.test-20260901", "collect-example.test-20260905", "collect-other.test-20260101"]
+assert left == want, f"collect rotation kept {left}"
+outside = os.path.join(os.path.dirname(root), "elsewhere")
+os.makedirs(outside, exist_ok=True)
+assert c.prune_old_runs(outside, "example.test") == [], "a custom --out must not be rotated"
+PYR
+[ $? -eq 0 ] || { echo "  ✗ collect run rotation"; exit 1; }
+echo "  ✓ render: document + artifact forms, roadmap, quick wins, since-last-audit, verify column, methodology, print CSS + Save as PDF, min-score gate, gsc columns, backup rotation, no external assets"

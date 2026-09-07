@@ -38,6 +38,10 @@ assessed, the optional "no effect on Google Search" list — is derived
 from the sidecar. Findings are ordered by effect on Google Search: direct
 first, indirect next, "none" last and outside the matrix and roadmap.
 
+Report sets are rotated: the report written now plus the two newest older
+seo-audit-<host>-<date>.* sets in the same folder are kept, anything older
+is deleted. An --out path outside that naming is never rotated.
+
 Stdlib only.
 """
 from __future__ import annotations
@@ -51,6 +55,8 @@ import re
 import sys
 from urllib.parse import urlsplit
 
+BACKUP_REPORTS_KEPT = 2
+REPORT_NAME = re.compile(r"^(seo-audit-.+)-(\d{4}-\d{2}-\d{2})\.[A-Za-z.]+$")
 PRIORITY_ORDER = {"critical": 0, "high": 1, "quick-win": 2, "medium": 3}
 PRIORITY_LABEL = {"critical": "Critical", "high": "High", "quick-win": "Quick win", "medium": "Medium"}
 PRIORITY_DOT = {"critical": "🔴", "high": "🟠", "medium": "🟡", "quick-win": "🟢"}
@@ -839,6 +845,35 @@ def to_artifact(title: str, body: str) -> str:
     return f"<title>{esc(title)}</title>\n{fonts_block()}\n<style>{CSS}</style>\n{body}\n"
 
 
+def prune_old_reports(out: str, keep: int = BACKUP_REPORTS_KEPT) -> list[str]:
+    """Delete this host's older report sets, keeping the newest `keep` besides the current date.
+
+    A set is every seo-audit-<host>-<date>.* file — markdown, sidecar, HTML,
+    artifact HTML, PDF. Output paths that do not follow that naming are left
+    alone, so a caller-chosen --out never triggers a delete.
+    """
+    m = REPORT_NAME.match(os.path.basename(out))
+    if not m:
+        return []
+    stem, date = m.group(1), m.group(2)
+    folder = os.path.dirname(os.path.abspath(out))
+    dated = re.compile(re.escape(stem) + r"-(\d{4}-\d{2}-\d{2})\.[A-Za-z.]+$")
+    by_date: dict[str, list[str]] = {}
+    for name in os.listdir(folder):
+        d = dated.match(name)
+        if d and d.group(1) != date:
+            by_date.setdefault(d.group(1), []).append(name)
+    dropped = []
+    for d in sorted(by_date, reverse=True)[keep:]:
+        for name in by_date[d]:
+            try:
+                os.remove(os.path.join(folder, name))
+                dropped.append(name)
+            except OSError:
+                pass
+    return dropped
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sidecar")
@@ -868,6 +903,10 @@ def main(argv=None) -> int:
         out = base + (".artifact.html" if a.artifact else ".html")
     with open(out, "w", encoding="utf-8") as f:
         f.write(text)
+    dropped = prune_old_reports(out)
+    if dropped:
+        print(f"pruned {len(dropped)} file(s) from older report sets, kept the newest {BACKUP_REPORTS_KEPT}: "
+              + ", ".join(sorted(dropped)), file=sys.stderr)
     print(out)
     if a.min_score:
         failed = below_minimum(doc, a.min_score)

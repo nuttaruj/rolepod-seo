@@ -6,6 +6,28 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-09-07
+
+### Added
+
+- **Output rotation, on by default.** Every collector run keeps its own
+  output plus the two newest older runs for that host under
+  `.rolepod-seo/collect-<host>-<date>/` and deletes the rest;
+  `render_report.py` does the same for `reports/seo-audit-<host>-<date>.*`
+  sets (markdown, sidecar, HTML, artifact HTML, PDF). A consuming project
+  therefore carries at most three audits per host instead of one per run.
+  Rotation only ever touches the tools' own naming — a directory passed
+  with `--out`, or a report path outside `seo-audit-<host>-<date>.*`, is
+  never pruned. `--previous` still resolves, since two older sidecars
+  remain.
+
+### Removed
+
+- `docs/decisions.md` and `docs/cli-support.md` — internal design notes,
+  kept locally in the (git-ignored) `brief/`. The published repo carries
+  the plugin, the README, the CHANGELOG and `docs/report-schema.md` (the
+  consumer contract `tests/static/report-schema.sh` checks).
+
 ## [0.12.0] — 2026-09-05
 
 ### Changed
