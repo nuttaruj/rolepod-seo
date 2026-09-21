@@ -89,9 +89,33 @@ gemini extensions install https://github.com/nuttaruj/rolepod-seo
 
 Skills are auto-discovered from `skills/<name>/SKILL.md`. Restart the CLI.
 
-### Cursor / opencode / anything else
+### Cursor
 
-Copy `skills/` into the workspace's skill directory. The collector is a
+Install from the marketplace with Cursor's `agent` CLI. Cursor pins a user
+marketplace to the commit it indexed at `add` time; `agent plugin
+marketplace update` re-indexes but keeps that commit, so moving to a newer
+release is remove + add (the remove also drops the installed plugin —
+install it again):
+
+```bash
+# Install — then install "rolepod-seo" from /plugins (agent CLI) or Settings → Plugins
+agent plugin marketplace add https://github.com/nuttaruj/rolepod-seo
+
+# Update
+agent plugin marketplace remove rolepod-seo
+agent plugin marketplace add https://github.com/nuttaruj/rolepod-seo
+
+# Which commit is pinned
+agent plugin marketplace list --format json
+```
+
+The marketplace install is the account-side copy — the one Cursor's cloud
+agents get — so a stale pin keeps them on the old release.
+
+### opencode / anything else
+
+Copy `skills/` into the workspace's skill directory (this works on Cursor
+too, for that workspace only). The collector is a
 single Python file and runs anywhere Python 3 does.
 
 Install paths differ per CLI; the manifests in this repo cover Claude Code,
