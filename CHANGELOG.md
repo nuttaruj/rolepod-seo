@@ -6,6 +6,29 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-09-22
+
+### Added
+
+- **opencode.** `scripts/install-opencode.sh` installs the four skills where
+  opencode reads them — `~/.config/opencode/skills/<id>/` for every
+  project, or `.opencode/skills/` in one project with `--project` — and
+  writes `rolepod-seo-version.json` next to them. Runs from a checkout or
+  through `curl … | bash`; install and update are the same command;
+  `--uninstall` removes only the rolepod-seo skills and the marker; a
+  re-install also removes skills the previous marker listed that the new
+  release no longer ships, and ids from a marker are validated to one
+  path segment before anything is removed. `ROLEPOD_SEO_OPENCODE_TARGET`
+  overrides the directory (the script notes when the shell exports
+  `OPENCODE_CONFIG_DIR`, which opencode reads in addition to the global
+  one), `ROLEPOD_SEO_REF` pins a release for the piped form. Verified
+  against opencode 2.0.12's skill discovery paths; opencode has no
+  marketplace or plugin manifest for skills, so nothing else ships.
+  `tests/static/opencode-install.sh` (in `make test-static`) exercises
+  both scopes, no download from a checkout, junk stripping, stale-file
+  replacement, dropped-skill removal, the marker's version lockstep,
+  uninstall next to a foreign skill and a hostile marker.
+
 ## [0.13.0] — 2026-09-07
 
 ### Added

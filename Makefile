@@ -1,6 +1,6 @@
 # rolepod-seo release gate. Skills-only plugin: bash + python3, no Node.
 #
-#   make test-static   — fast: manifests parse + version lockstep + skill contract + parity + clean-room guard
+#   make test-static   — fast: manifests parse + version lockstep + skill contract + parity + clean-room guard + opencode installer
 #   make test-fixture  — serves tests/fixtures/site-a and runs the Tier A collector against it
 #   make test          — test-static + test-fixture (release gate)
 #   make render        — copy skills/ + manifests into plugins/rolepod-seo/ (the shipped tree)
@@ -30,6 +30,7 @@ test-static:
 	@bash tests/static/render-report.sh
 	@bash tests/static/export-pdf.sh
 	@bash tests/static/gsc-csv.sh
+	@bash tests/static/opencode-install.sh
 	@echo "  ✓ test-static passed"
 
 test-fixture:

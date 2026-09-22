@@ -112,14 +112,45 @@ agent plugin marketplace list --format json
 The marketplace install is the account-side copy — the one Cursor's cloud
 agents get — so a stale pin keeps them on the old release.
 
-### opencode / anything else
+### opencode
 
-Copy `skills/` into the workspace's skill directory (this works on Cursor
-too, for that workspace only). The collector is a
-single Python file and runs anywhere Python 3 does.
+opencode reads skills from plain files — `~/.config/opencode/skills/<id>/SKILL.md`
+for every project, or `.opencode/skills/` inside one project — and has no
+marketplace, so one script copies the four skills there and writes a
+version marker. Install and update are the same command:
 
-Install paths differ per CLI; the manifests in this repo cover Claude Code,
-Codex, Cursor, Gemini and the generic `.agents/` layout.
+```bash
+# Global (every project)
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod-seo/main/scripts/install-opencode.sh | bash
+
+# This project only → ./.opencode/skills/ (commit it and the team gets the skills)
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod-seo/main/scripts/install-opencode.sh | bash -s -- --project
+
+# Remove (only the rolepod-seo skills and the marker are touched)
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod-seo/main/scripts/install-opencode.sh | bash -s -- --uninstall
+
+# Pin a release instead of main (the variable goes on bash, not on curl)
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod-seo/main/scripts/install-opencode.sh | ROLEPOD_SEO_REF=v0.14.0 bash
+
+# Which version is installed
+cat ~/.config/opencode/rolepod-seo-version.json
+```
+
+From a checkout, `scripts/install-opencode.sh` takes the same flags and
+installs that checkout's `skills/` (`ROLEPOD_SEO_REF` is ignored there).
+Restart opencode; the skills then sit in its command list as `/seo-audit`
+and the model loads them with its `skill` tool. A shell that exports
+`OPENCODE_CONFIG_DIR` starts opencode with that directory read as well, at
+higher priority than the global one; the script installs globally and says
+so, and `ROLEPOD_SEO_OPENCODE_TARGET="$OPENCODE_CONFIG_DIR"` installs there
+instead.
+
+### Anything else
+
+Copy `skills/` into the tool's skill directory (on Cursor this also works
+per workspace). The collector is a single Python file and runs anywhere
+Python 3 does. The manifests in this repo cover Claude Code, Codex, Cursor,
+Gemini and the generic `.agents/` layout; opencode uses the script above.
 
 ## Quick start
 
