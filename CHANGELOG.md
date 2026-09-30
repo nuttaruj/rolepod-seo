@@ -21,7 +21,13 @@ schema is additive-only but the skills may change shape at any release.
   `collect.json`; `pages.tsv` gains `heading_skips`.
 - **Which images lack alt.** `images_no_alt_src` lists the first 20
   (`src`, or `data-src` when `src` is empty or a `data:` placeholder).
-- `tests/static/text-px.sh` (in `make test-static`).
+- `tests/static/text-px.sh` and `tests/static/headings.sh` (in `make test-static`).
+
+### Fixed
+
+- An unclosed heading (`<h3>…` with no `</h3>` before the next heading) is
+  now closed by the next heading and kept in the outline and the H1–H3
+  counts, as a browser's HTML tree builder does; before, it was dropped.
 
 ### Changed
 

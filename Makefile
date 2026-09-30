@@ -31,6 +31,7 @@ test-static:
 	@bash tests/static/export-pdf.sh
 	@bash tests/static/gsc-csv.sh
 	@bash tests/static/text-px.sh
+	@bash tests/static/headings.sh
 	@bash tests/static/opencode-install.sh
 	@echo "  ✓ test-static passed"
 

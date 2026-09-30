@@ -443,6 +443,8 @@ class Page(HTMLParser):
             if "icon" in rel:
                 self.icon = True
         elif tag in HEADING_TAGS:
+            if self._h_buf is not None:  # unclosed heading: a new one closes it, as the HTML tree builder does
+                self._close_heading()
             self._h_level = int(tag[1])
             self._h_buf = []
         elif tag == "img":
@@ -517,12 +519,15 @@ class Page(HTMLParser):
             self.title = clean(" ".join(self._title_buf))
             self._title_buf = None
         elif tag in HEADING_TAGS and self._h_buf is not None:
-            txt = clean(" ".join(self._h_buf))
-            self.h[self._h_level].append(txt)
-            self.outline.append((self._h_level, txt))
-            if self._h_level <= 3 and re.search(r"\b(faq|frequently asked|common questions)\b", txt, re.I):
-                self.faq_signals.add("heading:faq")
-            self._h_buf = None
+            self._close_heading()
+
+    def _close_heading(self):
+        txt = clean(" ".join(self._h_buf))
+        self.h[self._h_level].append(txt)
+        self.outline.append((self._h_level, txt))
+        if self._h_level <= 3 and re.search(r"\b(faq|frequently asked|common questions)\b", txt, re.I):
+            self.faq_signals.add("heading:faq")
+        self._h_buf = None
 
     def handle_data(self, data):
         if self._ld_buf is not None:
