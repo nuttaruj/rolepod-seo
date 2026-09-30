@@ -6,6 +6,8 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-09-30
+
 ### Added
 
 - **Pixel width for title and description.** The collector estimates the
