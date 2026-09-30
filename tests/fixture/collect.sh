@@ -105,6 +105,12 @@ check(by["/blog/post-1.html"]["author_present"] and "ld:author" in by["/blog/pos
 check(by["/faq.html"]["faq_visible"] and not by["/faq.html"]["faq_schema"], "faq visible without schema")
 check(by["/faq.html"]["question_headings"] == 6, f"faq question headings 6 (got {by['/faq.html']['question_headings']})")
 check(by["/services.html"]["h1_count"] == 2 and by["/services.html"]["images_no_alt"] == 1, "services h1x2 + img without alt")
+sv = by["/services.html"]
+check(sv["images_empty_alt"] == 1 and sv["images_no_alt_src"] == [base + "/img/leak.jpg"], f"alt=\"\" counted apart; missing-alt src listed (got {sv['images_empty_alt']}, {sv['images_no_alt_src']})")
+check(sv["heading_skips"] == 1 and sv["heading_skip_examples"][0].startswith("H2→H4: ") and [4, "What counts as an emergency"] in sv["headings"], f"H2→H4 skip found in the H1–H6 outline (got {sv['heading_skips']}, {sv['heading_skip_examples']})")
+check(by["/"]["heading_skips"] == 0 and by["/"]["headings"][0] == [1, by["/"]["h1"]], "home outline starts at its H1, no skips")
+th = by["/th/services.html"]
+check(0 < th["title_px"] < th["title_len"] * 20 * 0.7, f"Thai title px ignores tone marks / upper vowels (got {th['title_px']}px for {th['title_len']} code points)")
 check(by["/blog/post-2.html"]["noindex"] and by["/blog/post-2.html"]["description_len"] == 0 and by["/blog/post-2.html"]["word_count"] < 300, "post-2 noindex, no description, thin")
 check(by["/"]["schema_types"] == ["Organization", "WebSite"], f"home schema types (got {by['/']['schema_types']})")
 check(by["/th/services.html"]["lang"] == "th" and by["/th/services.html"]["depth"] == 2, "Thai alternate fetched, lang th, depth 2 via services")

@@ -6,6 +6,33 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+### Added
+
+- **Pixel width for title and description.** The collector estimates the
+  SERP width of each title (`title_px`, Arial 20px) and description
+  (`description_px`, Arial 14px) from Arial advance widths; combining
+  marks — Thai tone marks and upper / lower vowels — take no width, so
+  Thai titles are no longer judged long by code-point count.
+  `seo-checks.md` now judges truncation by px (title >600px, description
+  >920px desktop / >680px mobile — estimates; Google publishes no
+  cut-off). `title_len` / `description_len` stay for `--previous`.
+- **H1–H6 heading outline.** `headings` (first 80, in page order),
+  `heading_skips` and `heading_skip_examples` (`H2→H4: …`, first 5) in
+  `collect.json`; `pages.tsv` gains `heading_skips`.
+- **Which images lack alt.** `images_no_alt_src` lists the first 20
+  (`src`, or `data-src` when `src` is empty or a `data:` placeholder).
+- `tests/static/text-px.sh` (in `make test-static`).
+
+### Changed
+
+- `images_no_alt` counts only images with no `alt` attribute. A
+  decorative `alt=""` is correct markup and is now counted apart as
+  `images_empty_alt`, so the number can drop against an older run.
+- `pages.md`: the title and description cells show px instead of
+  character counts, and the `h1` column is now `headings`
+  (`<n>× <first H1> · skip <k>`). `pages.tsv` gains `title_px`,
+  `description_px`, `heading_skips` and `images_empty_alt`.
+
 ## [0.14.0] — 2026-09-22
 
 ### Added

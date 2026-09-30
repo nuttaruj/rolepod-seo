@@ -5,7 +5,7 @@ served origin at test time (`tests/fixture/serve.sh`). Deliberate defects:
 
 | Page | Defect |
 |---|---|
-| `services.html` | two `<h1>`, one `<img>` without alt, short title, description duplicated with pricing |
+| `services.html` | two `<h1>`, an H2→H4 heading skip, one `<img>` without alt plus one decorative `alt=""`, short title, description duplicated with pricing |
 | `pricing.html` | description duplicated with services; no og:description |
 | `faq.html` | visible FAQ (6 question H2s) with **no** `FAQPage` schema |
 | `contact.html` | NAP visible, no `LocalBusiness` schema |

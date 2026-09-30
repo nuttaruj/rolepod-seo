@@ -41,6 +41,7 @@ import re
 import shutil
 import ssl
 import sys
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -109,6 +110,9 @@ KEY_PAGES = [
     ("contact", re.compile(r"/contact|/get-in-touch|/book|/quote|/demo", re.I)),
     ("faq", re.compile(r"/faqs?\b|/help\b|/support\b|/questions?\b", re.I)),
 ]
+HEADING_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6")
+OUTLINE_CAP = 80
+NOALT_SRC_CAP = 20
 QUESTION_RE = re.compile(r"^(who|what|when|where|why|how|can|could|does|do|is|are|should|which|will)\b|\?\s*$", re.I)
 SKIP_TAGS = ("script", "style", "noscript", "template", "svg")
 # third-party script / stylesheet / iframe hosts → known analytics or tag providers (substring match on the host)
@@ -140,6 +144,40 @@ def valid_hreflang(code: str) -> bool:
 # ---------------------------------------------------------------- helpers
 def clean(s: str) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
+
+
+# Arial / Helvetica advance widths (1/1000 em, Adobe core AFM) for ASCII 32–126, used to estimate SERP pixel width
+_ASCII_W = [
+    278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+    556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+    1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+    667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+    333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+    556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
+]
+_EXTRA_W = {"—": 1000, "–": 556, "…": 1000, "·": 278, "‘": 222, "’": 222, "“": 333, "”": 333, "•": 350,
+            "£": 556, "€": 556, "©": 737, "®": 737}
+
+
+def text_px(s: str, size: int) -> int:
+    """Estimated rendered width in px at `size` px Arial, whitespace collapsed — combining marks (Thai tone marks and
+    upper/lower vowels) and format characters (zero-width space, joiners, soft hyphen) take no width."""
+    units = 0
+    for ch in clean(s):
+        o = ord(ch)
+        if 32 <= o <= 126:
+            units += _ASCII_W[o - 32]
+        elif ch in _EXTRA_W:
+            units += _EXTRA_W[ch]
+        elif unicodedata.category(ch) in ("Mn", "Me", "Cf"):
+            continue
+        elif unicodedata.east_asian_width(ch) in ("W", "F"):
+            units += 1000
+        elif 0x0E00 <= o <= 0x0E7F:
+            units += 580  # Thai spacing glyph — approximation, Google renders Thai in a system Thai face
+        else:
+            units += 556
+    return round(units * size / 1000)
 
 
 def norm(url: str) -> str:
@@ -324,11 +362,14 @@ class Page(HTMLParser):
         self._footer = 0
         self.lang = ""
         self.charset = False
-        self.h: dict[int, list[str]] = {1: [], 2: [], 3: []}
+        self.h: dict[int, list[str]] = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
+        self.outline: list[tuple[int, str]] = []
         self.jsonld_raw: list[str] = []
         self.text: list[str] = []
         self.imgs = 0
         self.imgs_noalt = 0
+        self.imgs_emptyalt = 0
+        self.noalt_srcs: list[str] = []
         self.links_int = 0
         self.links_ext = 0
         self.internal: list[str] = []
@@ -401,13 +442,20 @@ class Page(HTMLParser):
                 self.author_signals.add("link:author")
             if "icon" in rel:
                 self.icon = True
-        elif tag in ("h1", "h2", "h3"):
+        elif tag in HEADING_TAGS:
             self._h_level = int(tag[1])
             self._h_buf = []
         elif tag == "img":
             self.imgs += 1
-            if not a.get("alt", "").strip():
+            if "alt" not in a:
                 self.imgs_noalt += 1
+                src = a.get("src", "")
+                if not src or src.startswith("data:"):
+                    src = a.get("data-src", "")
+                if src and len(self.noalt_srcs) < NOALT_SRC_CAP:
+                    self.noalt_srcs.append(urllib.parse.urljoin(self.base, src))
+            elif not a["alt"].strip():
+                self.imgs_emptyalt += 1
             if a.get("src", "").startswith("http://") and self.base.startswith("https://"):
                 self.mixed += 1
         elif tag == "a":
@@ -468,10 +516,11 @@ class Page(HTMLParser):
         if tag == "title" and self._title_buf is not None:
             self.title = clean(" ".join(self._title_buf))
             self._title_buf = None
-        elif tag in ("h1", "h2", "h3") and self._h_buf is not None:
+        elif tag in HEADING_TAGS and self._h_buf is not None:
             txt = clean(" ".join(self._h_buf))
             self.h[self._h_level].append(txt)
-            if re.search(r"\b(faq|frequently asked|common questions)\b", txt, re.I):
+            self.outline.append((self._h_level, txt))
+            if self._h_level <= 3 and re.search(r"\b(faq|frequently asked|common questions)\b", txt, re.I):
                 self.faq_signals.add("heading:faq")
             self._h_buf = None
 
@@ -560,19 +609,25 @@ def page_facts(url: str, res: dict) -> dict:
     if ld_author or "Person" in types:
         p.author_signals.add("ld:author")
     faq_visible = bool(p.faq_signals) or p.details >= 2
+    skips = [f"H{a}→H{b}: {t[:60]}" for (a, _), (b, t) in zip(p.outline, p.outline[1:]) if b > a + 1]
     row.update(
         {
             "generator": p.metas.get("generator", ""),
             "title": p.title or "",
             "title_len": len(p.title or ""),
+            "title_px": text_px(p.title or "", 20),
             "description": desc,
             "description_len": len(desc),
+            "description_px": text_px(desc, 14),
             "h1_count": len(p.h[1]),
             "h1": p.h[1][0] if p.h[1] else "",
             "h1_all": p.h[1],
             "h2_count": len(p.h[2]),
             "h2": p.h[2][:12],
             "h3_count": len(p.h[3]),
+            "headings": [[lvl, t] for lvl, t in p.outline[:OUTLINE_CAP]],
+            "heading_skips": len(skips),
+            "heading_skip_examples": skips[:5],
             "canonical": canon_abs,
             "canonical_ok": canonical_ok,
             "robots_meta": robots,
@@ -596,6 +651,8 @@ def page_facts(url: str, res: dict) -> dict:
             "word_count": words,
             "images": p.imgs,
             "images_no_alt": p.imgs_noalt,
+            "images_empty_alt": p.imgs_emptyalt,
+            "images_no_alt_src": p.noalt_srcs,
             "links_internal": p.links_int,
             "links_external": p.links_ext,
             "mixed_content": p.mixed,
@@ -1009,9 +1066,10 @@ def site_type(rows: list[dict], home_text: str) -> dict:
 
 # ---------------------------------------------------------------- output
 TSV_COLS = [
-    "url", "role", "selected_by", "status", "hops", "title", "title_len", "description_len", "h1_count", "h1", "h2_count",
+    "url", "role", "selected_by", "status", "hops", "title", "title_len", "title_px", "description_len", "description_px",
+    "h1_count", "h1", "h2_count", "heading_skips",
     "canonical_ok", "robots_meta", "lang", "word_count", "schema_types", "author_present", "faq_visible",
-    "faq_schema", "question_headings", "images_no_alt", "og", "date_visible", "inlinks", "depth", "third_party", "error",
+    "faq_schema", "question_headings", "images_no_alt", "images_empty_alt", "og", "date_visible", "inlinks", "depth", "third_party", "error",
 ]
 
 
@@ -1061,19 +1119,20 @@ def write_outputs(out: str, doc: dict):
         f.write("\t".join(TSV_COLS) + "\n")
         for r in rows:
             f.write("\t".join(cell(r, c) for c in TSV_COLS) + "\n")
-    md_cols = ["path", "status", "title", "desc", "h1", "canonical", "robots", "words", "schema", "author", "faq", "q-h2/3", "in/depth"]
+    md_cols = ["path", "status", "title", "desc", "headings", "canonical", "robots", "words", "schema", "author", "faq", "q-h2/3", "in/depth"]
     lines = ["| " + " | ".join(md_cols) + " |", "|" + "---|" * len(md_cols)]
     for r in rows:
         t = r.get("title", "")
-        tl = r.get("title_len", 0)
+        tpx = r.get("title_px", 0)
         dl = r.get("description_len", 0)
         h1c = r.get("h1_count", "")
+        hs = r.get("heading_skips", 0)
         cells = [
                     path_of(r["url"]),
                     str(r["status"]) + (f" ({r['hops']} hop)" if r.get("hops") else "") + (f" {r['error']}" if r.get("error") else ""),
-                    (t[:50] + ("…" if len(t) > 50 else "") + f" ({tl})") if t else ("—" if r["status"] else ""),
-                    (str(dl) if dl else "missing") if "description_len" in r else "",
-                    (f"{h1c}× " + (r.get("h1", "")[:40] or "")) if h1c != "" else "",
+                    (t[:50] + ("…" if len(t) > 50 else "") + f" ({tpx}px)") if t else ("—" if r["status"] else ""),
+                    (f"{r.get('description_px', 0)}px" if dl else "missing") if "description_len" in r else "",
+                    (f"{h1c}× " + (r.get("h1", "")[:40] or "") + (f" · skip {hs}" if hs else "")) if h1c != "" else "",
                     r.get("canonical_ok", ""),
                     r.get("robots_meta", "") or "—",
                     str(r.get("word_count", "")),
@@ -1086,7 +1145,7 @@ def write_outputs(out: str, doc: dict):
         lines.append("| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |")
     with open(os.path.join(out, "pages.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-        f.write("\nfaq = visible/schema · q-h2/3 = question-phrased H2/H3 · in/depth = inbound links from fetched pages / clicks from home (- = unreachable) · og = t/d/i for og:title / og:description / og:image present\n")
+        f.write("\ntitle / desc px = estimated SERP width (title 20px Arial, cut past ~600px; description 14px, cut past ~920px desktop / ~680px mobile) · headings = H1 count + first H1 · skip N = headings that jump a level (H2→H4) · faq = visible/schema · q-h2/3 = question-phrased H2/H3 · in/depth = inbound links from fetched pages / clicks from home (- = unreachable) · og = t/d/i for og:title / og:description / og:image present\n")
     with open(os.path.join(out, "site.json"), "w", encoding="utf-8") as f:
         json.dump(doc["site"], f, indent=2, ensure_ascii=False)
     with open(os.path.join(out, "collect.json"), "w", encoding="utf-8") as f:

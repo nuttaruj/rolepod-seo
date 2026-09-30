@@ -10,15 +10,15 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | Check | Threshold | Evidence to quote | Severity |
 |---|---|---|---|
 | `<title>` present | non-empty | the title text and its length | critical |
-| Title length | ~50–60 chars; >70 truncates, <25 wastes | title + `title_len` | medium |
+| Title width | >600px truncates on desktop; <25 chars wastes. Judge by `title_px`, not character count — Thai tone marks and upper / lower vowels count as characters but take no width. The px figure is an estimate (Arial 20px); Google publishes no cut-off | title + `title_px` | medium |
 | Title unique across site | no two pages share it | both paths + the shared text | high |
 | Primary topic early in title | main phrase in first ~40 chars | the title | low |
 | Meta description present | non-empty | the text + length | high |
-| Description length | ~150–160; >170 truncates, <70 thin | length | low |
+| Description width | >920px truncates on desktop, >680px on mobile; <70 chars thin. Judge by `description_px` (estimate, Arial 14px) | `description_px`; `description_len` (pages.tsv) for the thin case | low |
 | Description unique | no two pages share it | both paths | medium |
 | Description states the answer | says what the page delivers, not a slogan | the text | low |
 | H1 | exactly one | `h1_count` + text(s) | high (0 or ≥2) |
-| Heading hierarchy | H2 under H1, H3 under H2; no jump for styling | the heading list | low |
+| Heading hierarchy | H2 under H1, H3 under H2; no jump for styling (H2→H4) | `heading_skips` + `heading_skip_examples`; full H1–H6 outline in `headings` (collect.json). Report it with the H1 row — `pages.md` shows both in one `headings` cell. The outline includes nav, sidebar and footer headings: read the example text and drop a skip that sits in site chrome, not the content | low |
 | URL readable | hyphenated words, no session params, no `?id=` | the URL | medium |
 | Trailing-slash consistency | one convention site-wide | two differing URLs | low |
 | Canonical present | `<link rel=canonical>` on every indexable page | `canonical_ok` | high |
@@ -27,7 +27,7 @@ home / money pages and one step down on utility pages. `pages.tsv` and
 | Viewport meta | present | `viewport` | medium |
 | `html lang` | present, matches content language | the value | medium |
 | Charset | declared | `charset` | low |
-| Image alt text | content images have alt | `images_no_alt` / `images` | medium |
+| Image alt text | content images have alt; `alt=""` on a decorative image is correct, never a finding | `images_no_alt` / `images` + the file names from `images_no_alt_src` (first 20) | medium |
 | Hero image weight | flag obviously large hero (>500 KB) when size is visible | the file name + size | low (needs uiproof for real numbers) |
 | Internal links | descriptive anchors; key pages ≤3 clicks from home | anchor text examples; `not_linked_from_home` | medium |
 | Orphan key pages | every money page linked from nav / home | path | high |
