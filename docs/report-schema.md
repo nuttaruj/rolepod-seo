@@ -60,7 +60,7 @@ every field below is present there.
 | `findings[].status` | enum | `fail` \| `warn` \| `pass` \| `not-assessed` |
 | `findings[].evidence` | string | the quoted text / tag / URL |
 | `findings[].fix` | string | the exact change: field + value, or the snippet |
-| `findings[].owner` | enum | `uiproof` \| `wplab` \| `frontend-developer` \| `content-strategist` \| `human` |
+| `findings[].owner` | enum | `uiproof` \| `wplab` \| `code` \| `copy` \| `human` (`code` = `rolepod-builder`; `copy` = `rolepod-builder` with `domain: writing`, audience: prospect; a 0.15.x or earlier sidecar carries the old parent role names, read as `code` / `copy`) |
 | `findings[].effort` | enum | `S` \| `M` \| `L` |
 | `findings[].impact` | enum | `H` \| `M` \| `L` |
 | `findings[].priority` | enum | `critical` \| `high` \| `medium` \| `quick-win` |

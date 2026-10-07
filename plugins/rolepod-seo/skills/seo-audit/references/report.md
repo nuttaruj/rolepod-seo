@@ -25,9 +25,9 @@ Artifact are rendered from it.
 | Priority | Issue | Dim | Effort | Impact | Owner | Exact change |
 |---|---|---|---|---|---|---|
 | 🔴 Critical | <signal> · <path> | SEO | S | H | wplab | <field = value, or snippet> |
-| 🟠 High | … | AEO | S | H | frontend-developer | … |
-| 🟡 Medium | … | GEO | M | M | content-strategist | … |
-| 🟢 Quick win | … | SEO | S | M | frontend-developer | … |
+| 🟠 High | … | AEO | S | H | code | … |
+| 🟡 Medium | … | GEO | M | M | copy | … |
+| 🟢 Quick win | … | SEO | S | M | code | … |
 ```
 
 Dots: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Quick win. Sort: Critical, High,
@@ -73,7 +73,7 @@ Could not fetch: <url (status)>, … — or "none".
 ## Priority matrix
 | Priority | Issue | Dimension | Effort | Impact | Owner | Exact change |
 |---|---|---|---|---|---|---|
-<Critical / High / Medium / Quick win · S/M/L · H/M/L · uiproof / wplab / frontend-developer / content-strategist / human · field + value, or the snippet>
+<Critical / High / Medium / Quick win · S/M/L · H/M/L · uiproof / wplab / code / copy / human · field + value, or the snippet>
 
 ## No effect on Google Search (optional, listed last)
 <`seo_effect: none` items: signal · why no effect · optional change · page — never in the matrix or the roadmap>
@@ -148,7 +148,7 @@ Schema version 1. Additive changes only; consumers ignore unknown keys.
 Enumerations — `band`: critical | below-baseline | solid | strong | model |
 not-assessed. `severity`: critical | high | medium | low | info.
 `status`: fail | warn | pass | not-assessed. `owner`: uiproof | wplab |
-frontend-developer | content-strategist | human. `effort`: S | M | L.
+code | copy | human. `effort`: S | M | L.
 `impact`: H | M | L. `priority`: critical | high | medium | quick-win.
 `id` is stable across runs of the same site: `<dimension>-<signal>-<slug>`.
 `seo_effect`: `direct` (changes crawling / indexing / ranking in Google

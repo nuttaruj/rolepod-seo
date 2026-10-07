@@ -1,6 +1,6 @@
 ---
 name: seo-fix-plan
-description: Turn an /seo-audit priority matrix (or its JSON sidecar) into an executable fix plan — findings grouped by owner (rolepod-wplab for WordPress, frontend-developer for code, content-strategist for copy, human for policy) in dependency order, each with the exact payload, snippet or brief and a verification step. Use after an audit, or when asked to "fix these SEO issues", "apply the audit", or "what do we change first".
+description: Turn an /seo-audit priority matrix (or its JSON sidecar) into an executable fix plan — findings grouped by owner (rolepod-wplab for WordPress, `rolepod-builder` for code, `rolepod-builder` with `domain: writing` for copy, human for policy) in dependency order, each with the exact payload, snippet or brief and a verification step. Use after an audit, or when asked to "fix these SEO issues", "apply the audit", or "what do we change first".
 ---
 
 # /seo-fix-plan
@@ -24,7 +24,7 @@ ceiling `xhigh`).
 
 - No audit yet → `/seo-audit` first; a plan without evidence is guesswork.
 - Writing schema → `/seo-schema`. Writing the copy → `/seo-page-brief`
-  then content-strategist. This skill points at them, it does not replace them.
+  then `rolepod-builder` with `domain: writing`. This skill points at them, it does not replace them.
 
 ## Inputs
 
@@ -49,6 +49,8 @@ Read the sidecar. Keep `status: fail | warn`. `info` findings with
 `owner: human` go to the **Decisions** section (AI-bot policy, brand
 naming, which testimonials). `pass` and strengths are dropped. Merge
 findings that share one fix (one template change fixes forty pages).
+A sidecar from 0.15.x or earlier names the old parent roles as owners:
+read its frontend role as `code` and its content role as `copy`.
 
 ### 1b. Optional — Search Console demand (never required)
 
@@ -92,9 +94,9 @@ Use `references/handoff-formats.md` for the block per owner:
   `rolepod_wp_redirect_set` per chain; schema / robots / sitemap via the
   SEO plugin settings or the theme. Resolve `post_id` with
   `rolepod_wp_post_list` by slug before writing.
-- **frontend-developer** — file + snippet: metadata export, canonical
+- **code (`rolepod-builder`)** — file + snippet: metadata export, canonical
   helper, JSON-LD component, sitemap route, redirect config, robots route.
-- **content-strategist** (audience: prospect) — pointer to the
+- **copy (`rolepod-builder` with `domain: writing`, audience: prospect)** — pointer to the
   `/seo-page-brief` output per page; never the copy itself.
 - **human** — decisions with options and trade-offs; policy, budget, brand.
 - **rolepod-uiproof** — when a finding needs rendered-DOM or CWV proof
@@ -121,7 +123,7 @@ suggest a re-audit; the sidecar `id`s make the before / after diff trivial.
 
 ```text
 # SEO fix plan — <host> · <date> · from seo-audit-<host>-<date>.json
-## Summary   <n> items · wplab <n> · frontend-developer <n> · content-strategist <n> · human <n>
+## Summary   <n> items · wplab <n> · code <n> · copy <n> · human <n>
 ## Stage 1 — crawl blockers
 ### FP-01 · <finding id> · <page>
 Owner: … · Depends on: — · Effort: S · Impact: H
@@ -146,6 +148,6 @@ Verify: <command + expected value>
 
 - `Apply the audit from yesterday` → loads the newest sidecar, 14 items in
   five stages, two wplab payloads executed after approval, four code items
-  handed to frontend-developer, three briefs queued, one decision (GPTBot).
+  handed to `rolepod-builder`, three briefs queued, one decision (GPTBot).
 - `Just the critical ones` → filters `priority: critical`, keeps the
   dependency order, notes what the skipped items were waiting on.

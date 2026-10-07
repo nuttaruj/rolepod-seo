@@ -67,4 +67,4 @@ Optional: rolepod-uiproof `audit_seo` for rendered checks.
 
 ## Hand-off
 
-content-strategist (audience: prospect) · brief: `reports/seo-brief-<slug>-<date>.md` · ask: <one line>
+rolepod-builder, domain: writing (audience: prospect) · brief: `reports/seo-brief-<slug>-<date>.md` · ask: <one line>

@@ -1,6 +1,6 @@
 ---
 name: seo-schema
-description: Add or fix structured data (JSON-LD) for a page or a site — Organization, LocalBusiness, WebSite, BreadcrumbList, Article, Product, FAQPage, HowTo, Person, Service, Event. Generates the block from facts already on the page, checks required properties per type, validates with a stdlib script (or rolepod-uiproof audit_seo when installed), and hands the snippet to rolepod-wplab or frontend-developer. Use when asked for schema markup, rich results, JSON-LD, or when /seo-audit flagged missing or invalid structured data.
+description: Add or fix structured data (JSON-LD) for a page or a site — Organization, LocalBusiness, WebSite, BreadcrumbList, Article, Product, FAQPage, HowTo, Person, Service, Event. Generates the block from facts already on the page, checks required properties per type, validates with a stdlib script (or rolepod-uiproof audit_seo when installed), and hands the snippet to rolepod-wplab or `rolepod-builder`. Use when asked for schema markup, rich results, JSON-LD, or when /seo-audit flagged missing or invalid structured data.
 ---
 
 # /seo-schema
@@ -89,8 +89,8 @@ the rendered DOM. Fix every `FAIL` before handing off.
 | Platform | Owner | Exact hand-off |
 |---|---|---|
 | WordPress + RankMath / Yoast | rolepod-wplab | plugin schema settings where the type is supported; otherwise the block in the theme `<head>` via a child theme or a snippet plugin — name the file and hook (`wp_head`) |
-| Next.js / React / other code | `frontend-developer` | a `JsonLd` component rendering `<script type="application/ld+json">` server-side, with the object built from the page's data; file path named |
-| Static HTML | the user, or `frontend-developer` | the block pasted in `<head>` of the named file |
+| Next.js / React / other code | `rolepod-builder` | a `JsonLd` component rendering `<script type="application/ld+json">` server-side, with the object built from the page's data; file path named |
+| Static HTML | the user, or `rolepod-builder` | the block pasted in `<head>` of the named file |
 | Hosted builders (Wix, Squarespace, Webflow, Shopify) | human | the builder's custom-code / SEO panel; name the panel |
 
 Every hand-off carries: the page URL, the full block, "replace" or
@@ -124,7 +124,7 @@ Re-run step 4 against the live URL; `/seo-audit` Tier B (`audit_seo`
   file / plugin screen.
 - `Our blog posts have no author schema` → `Article.author` → `Person`
   with `name` + `url` to the author page (created if missing — a task for
-  content-strategist), one block per post template.
+  `rolepod-builder` with `domain: writing`), one block per post template.
 - `Local business schema for a plumber in Leeds` → `Plumber` subtype with
   the footer NAP, `openingHoursSpecification` from the contact page,
   `areaServed` from the service-area sentence; nothing the page does not say.

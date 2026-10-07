@@ -32,7 +32,7 @@ tool-schema cost. The audit needs Python 3 and nothing else.
 | `/seo-audit` | "audit example.com for SEO and AI search" | Quick / Full audit, three scores with evidence, markdown report + JSON sidecar, priority matrix |
 | `/seo-fix-plan` | "apply the audit" | findings in dependency order, one block per item with owner, exact payload / snippet / brief and a verification command; runs approved WordPress writes through rolepod-wplab |
 | `/seo-schema` | "add LocalBusiness schema to /contact" | JSON-LD from facts on the page, validated (`scripts/validate.py`, stdlib; warns on types whose Google rich result was retired, e.g. `FAQPage`), placement hand-off per platform |
-| `/seo-page-brief` | "rewrite /pricing for '<query>'" | intent, 40–60-word answer block, question outline, entities and proof, schema, internal links — for content-strategist |
+| `/seo-page-brief` | "rewrite /pricing for '<query>'" | intent, 40–60-word answer block, question outline, entities and proof, schema, internal links — for `rolepod-builder` with `domain: writing` |
 
 ## What you get from an audit
 
@@ -189,7 +189,7 @@ of site.
 |---|---|---|
 | [rolepod-uiproof](https://github.com/nuttaruj/rolepod-uiproof) | rendered-DOM checks (`audit_seo`), Core Web Vitals (`measure_cwv`), JS-only nav discovery (`discover_flows`) | tool presence — Tier B turns on |
 | [rolepod-wplab](https://github.com/nuttaruj/rolepod-wplab) | executes WordPress fixes: `rolepod_wp_seo_set` (Yoast / RankMath), `rolepod_wp_redirect_set` | tool presence — hand-offs become executable |
-| [rolepod](https://github.com/nuttaruj/rolepod) parent | `content-strategist` writes the copy, `frontend-developer` writes the code, a scout runs the sweep on the cheap tier | standard role delegation |
+| [rolepod](https://github.com/nuttaruj/rolepod) parent | `rolepod-builder` with `domain: writing` writes the copy, `rolepod-builder` writes the code, `rolepod-scout` runs the sweep on the cheap tier | standard role delegation |
 
 Nothing breaks when a companion is absent: the report marks the checks it
 would have added as "not assessed (needs …)".

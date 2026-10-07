@@ -49,11 +49,11 @@ Schema blocks: RankMath / Yoast schema settings when the type is
 supported; otherwise a child-theme `wp_head` snippet — hand the block from
 `/seo-schema` with the file path (`wp-content/themes/<child>/functions.php`).
 
-## frontend-developer — code
+## code — rolepod-builder
 
 ```text
 FP-<n> · <finding id> · <page url or route>
-Owner: frontend-developer · Depends on: <FP-x or —>
+Owner: code (rolepod-builder) · Depends on: <FP-x or —>
 File:   <path, e.g. app/(site)/pricing/page.tsx | src/components/JsonLd.tsx | app/sitemap.ts | next.config.js redirects | app/robots.ts>
 Change: <the snippet — a metadata export, a canonical, a component, a redirect entry>
 Covers: <pages this template change fixes>
@@ -64,11 +64,11 @@ Keep the snippet complete: imports, the export, the values. Name the
 framework version if it matters (Next.js App Router `metadata` vs Pages
 `next/head`).
 
-## content-strategist (audience: prospect) — copy
+## copy — rolepod-builder with domain: writing (audience: prospect)
 
 ```text
 FP-<n> · <finding id> · <page url>
-Owner: content-strategist (audience: prospect) · Depends on: <FP-x or —>
+Owner: copy (rolepod-builder, domain: writing, audience: prospect) · Depends on: <FP-x or —>
 Brief:  reports/seo-brief-<slug>-<date>.md   (from /seo-page-brief — run it first if missing)
 Ask:    <one line: what the page must do that it does not do today, e.g. "40–60-word answer under the H1 for 'emergency plumber cost leeds'">
 Verify: collect.py on the URL → word_count ≥ <target>, question_headings ≥ <n>, faq_visible / author_present as the brief requires

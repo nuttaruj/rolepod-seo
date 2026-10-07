@@ -6,6 +6,18 @@ schema is additive-only but the skills may change shape at any release.
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-08
+
+### Changed
+
+- **Owner values follow the parent's 4 agent types** (rolepod v2.221.0):
+  `findings[].owner` is now `uiproof | wplab | code | copy | human`. `code`
+  replaces `frontend-developer` (the parent's `rolepod-builder`); `copy`
+  replaces `content-strategist` (`rolepod-builder` with `domain: writing`).
+  This is the one non-additive sidecar change before v1.0: `/seo-fix-plan`
+  still reads a 0.15.x sidecar, mapping the two old values. Skills, README
+  and manifests name the new types; `rolepod-scout` runs the sweep.
+
 ## [0.15.0] — 2026-09-30
 
 ### Added

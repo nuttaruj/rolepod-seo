@@ -86,7 +86,7 @@ Detect by tool presence, never by assumption:
 
 - rolepod-uiproof tools (`audit_seo`, `measure_cwv`, `discover_flows`) → Tier B on.
 - rolepod-wplab (`rolepod_wp_seo_set`) → WordPress hand-offs are executable.
-- A subagent facility (Agent / scout / `spawn_agent`) → the sweep can be delegated.
+- A subagent facility (Agent / `rolepod-scout` / `spawn_agent`) → the sweep can be delegated.
 
 Print one line: `Tier A fetch · Tier B <on|off> (rolepod-uiproof) · connectors: Phase 2`.
 
@@ -115,7 +115,7 @@ variants, link graph, detected site type) and `collect.json` under
 finding needs a quote the table cannot give — then fetch that one page.
 
 **Sweep delegation.** When the selection is more than about 10 URLs and the
-harness can spawn subagents, hand the collector run to a read-only scout on
+harness can spawn subagents, hand the collector run to a read-only `rolepod-scout` on
 the cheap tier and take back the output path plus a 10-line summary. The
 Lead never reads the sweep's HTML.
 
@@ -209,8 +209,8 @@ no external assets). If `export_pdf.py` found no browser, publish without
 colored dots in the Priority column (🔴 Critical · 🟠 High · 🟡 Medium ·
 🟢 Quick win), columns Priority · Issue · Dim · Effort · Impact · Owner ·
 Exact change. "Exact change" carries the field and value or the snippet —
-that is what lets `/seo-fix-plan`, rolepod-wplab, frontend-developer or
-content-strategist execute without re-reading the audit.
+that is what lets `/seo-fix-plan`, rolepod-wplab or rolepod-builder (code, or
+copy with `domain: writing`) execute without re-reading the audit.
 
 ## Evidence rules
 
@@ -228,13 +228,13 @@ content-strategist execute without re-reading the audit.
 |---|---|
 | Rendered-DOM detail, CWV, JavaScript-only nav | rolepod-uiproof `audit_seo` / `measure_cwv` / `discover_flows` |
 | WordPress meta, canonical, noindex, OG, redirects | rolepod-wplab `rolepod_wp_seo_set`, `rolepod_wp_redirect_set` |
-| Code: metadata objects, JSON-LD components, sitemap route | `frontend-developer` |
-| Copy, page briefs, E-E-A-T content | `content-strategist` (audience: prospect) via `/seo-page-brief` |
+| Code: metadata objects, JSON-LD components, sitemap route | `rolepod-builder` |
+| Copy, page briefs, E-E-A-T content | `rolepod-builder` with `domain: writing` (audience: prospect) via `/seo-page-brief` |
 | Policy: AI-bot access, brand naming, which testimonials to show | human |
 
 ## Examples
 
 - `Audit https://northwind.example for SEO and AI search` → asks Quick / Full,
   runs the collector, writes both report files, prints the summary.
-- `Full SEO audit of acme.com, rolepod-uiproof is installed` → Tier B on, CWV on home + two money pages, scout sweep, glossary.
+- `Full SEO audit of acme.com, rolepod-uiproof is installed` → Tier B on, CWV on home + two money pages, `rolepod-scout` sweep, glossary.
 - `Quick check: why is /pricing not cited by Perplexity?` → Quick on home + pricing, GEO / AEO first.

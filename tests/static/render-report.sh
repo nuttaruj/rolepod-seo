@@ -13,7 +13,7 @@ d = json.load(open("tests/fixtures/sample-report.json"))
 d["generated_at"] = "2026-08-01T10:00:00Z"
 d["scores"]["seo"]["score"] = 4; d["scores"]["seo"]["band"] = "below-baseline"
 d["findings"] = [f for f in d["findings"] if f["id"] != "aeo-faq-schema-faq"]
-d["findings"].append(dict(id="seo-title-missing-about", dimension="seo", signal="title", page="http://127.0.0.1:8765/about.html", severity="critical", status="fail", evidence="<title></title>", fix="add a title", owner="frontend-developer", effort="S", impact="H", priority="critical"))
+d["findings"].append(dict(id="seo-title-missing-about", dimension="seo", signal="title", page="http://127.0.0.1:8765/about.html", severity="critical", status="fail", evidence="<title></title>", fix="add a title", owner="code", effort="S", impact="H", priority="critical"))
 json.dump(d, open(sys.argv[1] + "/previous.json", "w"))
 PY2
 prev_line=$(python3 skills/seo-audit/scripts/render_report.py tests/fixtures/sample-report.json --previous "$OUT/previous.json" --out "$OUT/report.prev.html" 2>&1 >/dev/null)

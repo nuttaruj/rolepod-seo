@@ -1,12 +1,12 @@
 ---
 name: seo-page-brief
-description: Write a content brief for one page (existing or new) so a writer can produce copy that ranks and gets cited — search intent, the 40–60-word direct answer, the H2/H3 question set, entities and facts to name, sources to cite, schema type with required fields, internal links in and out, word-count target by page role, E-E-A-T elements. Hands the brief to the rolepod content-strategist; never writes the copy. Use when asked to "write / rewrite page X for query Y", "content brief", or when /seo-audit or /seo-fix-plan flagged thin or unfocused content.
+description: Write a content brief for one page (existing or new) so a writer can produce copy that ranks and gets cited — search intent, the 40–60-word direct answer, the H2/H3 question set, entities and facts to name, sources to cite, schema type with required fields, internal links in and out, word-count target by page role, E-E-A-T elements. Hands the brief to the rolepod `rolepod-builder` with `domain: writing`; never writes the copy. Use when asked to "write / rewrite page X for query Y", "content brief", or when /seo-audit or /seo-fix-plan flagged thin or unfocused content.
 ---
 
 # /seo-page-brief
 
 Produces the brief, not the prose. The brief is precise enough that
-content-strategist (audience: prospect) can write the page without a
+`rolepod-builder` with `domain: writing` (audience: prospect) can write the page without a
 follow-up question, and `/seo-audit` can verify the result by columns.
 
 Parent judgment applies unchanged (verify-first, simplest viable, effort
@@ -21,7 +21,7 @@ ceiling `xhigh`).
 
 ## When NOT to use
 
-- The copy itself → content-strategist with this brief.
+- The copy itself → `rolepod-builder` with `domain: writing`, given this brief.
 - Site-wide problems → `/seo-audit`; a list of fixes → `/seo-fix-plan`.
 - Keyword research with volumes → Phase 2; the brief works from the
   queries the user gives or the ones the page already targets.
@@ -40,7 +40,7 @@ ceiling `xhigh`).
 
 - `reports/seo-brief-<slug>-<date>.md` from `templates/page-brief.md`.
 - Chat summary: intent, the answer sentence, the heading list, the
-  hand-off line to content-strategist.
+  hand-off line to `rolepod-builder` with `domain: writing`.
 
 ## Process
 
@@ -93,7 +93,7 @@ here, with anchor text) and out (2–5 related pages); the canonical URL.
 
 ### 7. Hand off
 
-Write the file, then hand to content-strategist (audience: prospect)
+Write the file, then hand to `rolepod-builder` with `domain: writing` (audience: prospect)
 with the path and the verification columns (`word_count`,
 `question_headings`, `author_present`, `date_visible`, `schema_types`).
 `/seo-fix-plan` picks the same file up as the content item.
